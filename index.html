@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>GLAZ — тренажёр «перепроверки образа»</title>
+  <title>GLAZ — тренажёр для глаз</title>
   <style>
     :root {
       --bg: #ffffff;
@@ -65,8 +65,8 @@
       place-items: center;
       z-index: 1000;
       pointer-events: none;
-      color: var(--fg);
-      background: transparent;
+      color: #ffffff;
+      background: #000000;
       font-weight: 700;
       font-size: clamp(28px, 8vw, 96px);
       line-height: 1.1;
@@ -83,8 +83,10 @@
       font-size: clamp(12px, 2.5vw, 16px);
       opacity: 0.7;
     }
-    .intro a { color: var(--fg); text-decoration: none; pointer-events: auto; opacity: 0.8; }
+    .intro a { color: #dddddd; text-decoration: none; pointer-events: auto; opacity: 0.8; }
     .intro a:hover { text-decoration: underline; opacity: 1; }
+    @keyframes introPulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+    .introText { animation: introPulse 3.5s ease-in-out infinite; }
     .centerOverlay {
       position: fixed;
       inset: 0;
@@ -151,13 +153,14 @@
     /* Blur helpers for non-layer overlays */
     .focusViz { filter: blur(0px); opacity: 1; transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out; }
     .unfocusViz { filter: blur(7px); opacity: 0.85; transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out; }
+    .hiddenSoft { opacity: 0 !important; animation: none !important; transition: opacity 3000ms ease-in-out !important; }
   </style>
 </head>
 <body>
   <div id="app" aria-label="GLAZ тренажёр" role="application"></div>
   <div class="hud" id="hud"></div>
   <div class="muteBadge" id="mute">🔊 Звук включён</div>
-  <div class="intro" id="intro">Смотри внимательно<br><small>Клик включает/выключает звук</small><small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small></div>
+  <div class="intro" id="intro"><span class="introText">Смотри внимательно</span><br><small>Клик включает/выключает звук</small><small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small></div>
   <div class="centerOverlay" id="center"></div>
   <div class="layers" id="layers">
     <div class="layer" id="layerBack"></div>
@@ -267,6 +270,12 @@
         window._focusTimers.forEach(t => clearTimeout(t));
       }
       window._focusTimers = [];
+    }
+    function clearCounterVisTimers() {
+      if (window._counterVisTimers && Array.isArray(window._counterVisTimers)) {
+        window._counterVisTimers.forEach(t => clearTimeout(t));
+      }
+      window._counterVisTimers = [];
     }
     function clearLayers() {
       const back = document.getElementById('layerBack');
@@ -414,6 +423,7 @@
       clearShutterTimer();
       clearCounterTimer();
       clearFocusTimers();
+      clearCounterVisTimers();
       stopTicking();
       clearSymbol();
       updateHUD();
@@ -425,9 +435,11 @@
       const sizeRatio = rand(0.30, 0.90); // 30%–90% экрана
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
-      const sizePx = Math.floor(Math.min(vw, vh) * sizeRatio);
+      const minDim = Math.min(vw, vh);
+      const maxScale = 1.25; // самый ближний слой
+      const sizePx = Math.floor(minDim * sizeRatio / maxScale);
 
-      const rotate = pick(0.10) ? rand(-35, 35) : 0; // 10% поворот на угол
+      const rotate = 0; // без поворота, гарантируем полное вмещение
 
       // Позиция: по центру, но если <40% — случайное место
       let left = (vw - sizePx) / 2;
@@ -443,6 +455,11 @@
       const mid = document.getElementById('layerMid');
       const front = document.getElementById('layerFront');
       [back, mid, front].forEach(el => { if (el) { el.innerHTML=''; el.classList.remove('focus','unfocus'); } });
+      // плавное появление экрана рисовки
+      if (layersRoot) {
+        layersRoot.style.opacity = '0';
+        layersRoot.style.transition = 'opacity 800ms ease';
+      }
 
       const strokeColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
       function mountTo(layerEl, scale) {
@@ -461,6 +478,10 @@
       const wrapBack = mountTo(back, 0.8);
       const wrapMid = mountTo(mid, 1.0);
       const wrapFront = mountTo(front, 1.25);
+
+      if (layersRoot) {
+        requestAnimationFrame(() => { layersRoot.style.opacity = '1'; });
+      }
 
       // фокус-менеджер: чаще центр, иногда задний/передний
       function setFocus(target) {
@@ -500,18 +521,21 @@
 
       startTicking();
 
-      // центр: «Восстановление зрения» + обратный счётчик
+      // центр: «Восстановление зрения» + обратный счётчик (заголовок синхронно прячется/показывается с таймером)
       const center = document.getElementById('center');
       if (center) {
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
         const startCount = Math.max(1, Math.ceil(durationMs / 1000));
-        center.innerHTML = `<div><div class="title small pulse-small">Восстановление зрения</div><div class="counter" id="drawCounter">${startCount}</div></div>`;
+        center.innerHTML = `<div><div class=\"title small pulse-small hiddenSoft\" id=\"visionTitle\"> </div><div class=\"counter\" id=\"drawCounter\">${startCount}</div></div>`;
       }
       const counterEl = document.getElementById('drawCounter');
+      const titleEl = document.getElementById('visionTitle');
       if (counterEl) {
         let remainingSec = Math.max(1, Math.ceil(durationMs / 1000));
         counterEl.textContent = String(remainingSec);
+        counterEl.style.transition = 'opacity 3000ms ease-in-out';
+        if (titleEl) titleEl.style.transition = 'opacity 3000ms ease-in-out';
         counterTimer = setInterval(() => {
           remainingSec -= 1;
           if (remainingSec <= 0) {
@@ -521,6 +545,17 @@
             counterEl.textContent = String(remainingSec);
           }
         }, 1000);
+        // окно видимости: первые 10с и последние 7с
+        const visTimers = [];
+        // изначально показываем оба
+        setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, 0);
+        // скрываем через 10с
+        visTimers.push(setTimeout(() => { counterEl.style.opacity = '0'; if (titleEl) titleEl.classList.add('hiddenSoft'); }, 10000));
+        // показываем за 7с до конца
+        if (durationMs > 7000) {
+          visTimers.push(setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, Math.max(0, durationMs - 7000)));
+        }
+        window._counterVisTimers = visTimers;
       }
 
       // заморозка 2с, затем шторки 2с, затем пауза
@@ -546,7 +581,7 @@
 
     function showSymbol() {
       phase = 'symbol';
-      const showMs = randInt(15000, 30001);
+      const showMs = randInt(90000, 120001);
       currentDrawMs = showMs;
       phaseEndAt = performance.now() + showMs + 2000 + 2000; // draw + freeze + shutters
       const intro = document.getElementById('intro');
@@ -569,10 +604,10 @@
       clearFreezeTimer();
       clearCounterTimer();
 
-      // центр: «Отдых глаз», не показывать на самом первом экране до старта
+      // центр: эмодзи с закрытыми глазами вместо текста, не показывать на самом первом экране до старта
       const center = document.getElementById('center');
       if (center) {
-        center.innerHTML = hasStarted ? `<div class="title large pulse-large">Отдых глаз</div>` : ``;
+        center.innerHTML = hasStarted ? `<div class="title large pulse-large">Отдых...</div>` : ``;
         // в паузе надпись всегда в фокусе (не размывать)
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
@@ -636,9 +671,10 @@
       }
     });
 
-    // Старт
+    // Старт: показываем интро 7 секунд на чёрном фоне
     updateHUD();
-    startPause(); // начинаем с паузы
+    setTheme(true);
+    setTimeout(showSymbol, 7000);
     // попытка включить wake lock на старте и повторять при взаимодействиях
     requestWakeLock();
   })();
