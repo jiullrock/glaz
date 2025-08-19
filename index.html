@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>GLAZ — тренажёр «перепроверки образа»</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #000000;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    #app {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      transition: background-color 250ms ease;
+    }
+    .symbolWrapper {
+      position: absolute;
+      will-change: transform;
+      display: grid;
+      place-items: center;
+      pointer-events: none; /* клики проходят сквозь */
+    }
+    .symbolWrapper.hidden { display: none; }
+    .symbolWrapper svg { shape-rendering: geometricPrecision; }
+    .hud {
+      position: fixed;
+      left: 10px; bottom: 10px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.06);
+      color: #111;
+      backdrop-filter: blur(6px);
+      font-size: 14px;
+      line-height: 1.25;
+      max-width: min(92vw, 520px);
+      transition: opacity .25s ease;
+    }
+    .dark .hud { background: rgba(255,255,255,.08); color: #f5f5f5; }
+    .hud small { opacity: .7; }
+    .hud .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+    .phase-symbol .dot { background: #2a7; }
+    .phase-pause .dot { background: #999; }
+    .muteBadge { position: fixed; right: 10px; bottom: 10px; font-size: 14px; opacity: .8; }
+    @media (max-width: 600px) {
+      .hud { font-size: 12px; padding: 6px 10px; }
+    }
+    .intro {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 1000;
+      pointer-events: none;
+      color: var(--fg);
+      background: transparent;
+      font-weight: 700;
+      font-size: clamp(28px, 8vw, 96px);
+      line-height: 1.1;
+      letter-spacing: 0.02em;
+      text-align: center;
+      opacity: 0.92;
+      transition: opacity .5s ease;
+    }
+    .intro.hide { opacity: 0; }
+    .intro small {
+      display: block;
+      margin-top: 12px;
+      font-weight: 500;
+      font-size: clamp(12px, 2.5vw, 16px);
+      opacity: 0.7;
+    }
+    .intro a { color: var(--fg); text-decoration: none; pointer-events: auto; opacity: 0.8; }
+    .intro a:hover { text-decoration: underline; opacity: 1; }
+    .centerOverlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      z-index: 1200;
+      pointer-events: none;
+      color: var(--fg);
+    }
+    .centerOverlay .title.small { font-size: clamp(14px, 2.6vw, 20px); font-weight: 600; opacity: 0.85; }
+    .centerOverlay .title.large { font-size: clamp(28px, 6vw, 72px); font-weight: 700; opacity: 0.28; letter-spacing: 0.02em; }
+    .centerOverlay .counter { margin-top: 8px; font-size: clamp(48px, 10vw, 160px); font-weight: 800; line-height: 1.0; }
+    @keyframes pulseSmall {
+      0% { opacity: 0.65; }
+      50% { opacity: 0.95; }
+      100% { opacity: 0.65; }
+    }
+    @keyframes pulseLarge {
+      0% { opacity: 0.22; }
+      50% { opacity: 0.36; }
+      100% { opacity: 0.22; }
+    }
+    .centerOverlay .pulse-small { animation: pulseSmall 4.5s ease-in-out infinite; }
+    .centerOverlay .pulse-large { animation: pulseLarge 5.5s ease-in-out infinite; }
+    .shutters {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      pointer-events: none;
+    }
+    .shutters .top, .shutters .bottom {
+      position: absolute;
+      left: 0; right: 0;
+      background: #000;
+      height: 0%;
+      transition: height 2000ms ease-in-out;
+    }
+    .shutters .top { top: 0; }
+    .shutters .bottom { bottom: 0; }
+    .shutters.active .top { height: 50%; }
+    .shutters.active .bottom { height: 50%; }
+    /* Layers for depth focusing */
+    .layers {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+    .layer {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out, transform 2500ms ease-in-out;
+      will-change: filter, transform, opacity;
+    }
+    .layer .symbolWrapper { position: relative; left: 0; top: 0; }
+    .layer.focus { filter: blur(0px); opacity: 1; }
+    .layer.unfocus { filter: blur(7px); opacity: 0.85; }
+    #layerBack { z-index: 10; }
+    #layerMid { z-index: 20; }
+    #layerFront { z-index: 30; }
+    /* Blur helpers for non-layer overlays */
+    .focusViz { filter: blur(0px); opacity: 1; transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out; }
+    .unfocusViz { filter: blur(7px); opacity: 0.85; transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out; }
+  </style>
+</head>
+<body>
+  <div id="app" aria-label="GLAZ тренажёр" role="application"></div>
+  <div class="hud" id="hud"></div>
+  <div class="muteBadge" id="mute">🔊 Звук включён</div>
+  <div class="intro" id="intro">Смотри внимательно<br><small>Клик включает/выключает звук</small><small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small></div>
+  <div class="centerOverlay" id="center"></div>
+  <div class="layers" id="layers">
+    <div class="layer" id="layerBack"></div>
+    <div class="layer" id="layerMid"></div>
+    <div class="layer" id="layerFront"></div>
+  </div>
+  <div class="shutters" id="shutters"><div class="top"></div><div class="bottom"></div></div>
+
+  <script>
+  (function() {
+    const app = document.getElementById('app');
+    const hud = document.getElementById('hud');
+    const mute = document.getElementById('mute');
+
+    let audioCtx = null;
+    let masterGain = null;
+    let tickingInterval = null;
+    let phaseTimer = null;
+    let freezeTimer = null;
+    let shutterTimer = null;
+    let counterTimer = null;
+    let phaseEndAt = 0;
+    let hasStarted = false;
+    let currentDrawMs = 0;
+    let wakeLock = null;
+    let soundEnabled = false; // звук включается первым кликом
+
+    let phase = 'pause'; // 'symbol' | 'pause'
+    let symbolWrapper = null;
+
+    const SHOW_MS = 7000; // символ показывается 7 сек
+
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+    function randInt(min, max) { return Math.floor(rand(min, max)); }
+    function pick(pTrue=0.5) { return Math.random() < pTrue; }
+
+    function initAudio() {
+      if (audioCtx) return;
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.9;
+        masterGain.connect(audioCtx.destination);
+      } catch (e) {
+        console.warn('Audio init failed', e);
+      }
+    }
+
+    function setTheme(isDark) {
+      document.documentElement.classList.toggle('dark', isDark);
+      document.documentElement.style.setProperty('--bg', isDark ? '#000000' : '#ffffff');
+      document.documentElement.style.setProperty('--fg', isDark ? '#ffffff' : '#000000');
+      app.style.backgroundColor = isDark ? '#000' : '#fff';
+      app.style.color = isDark ? '#fff' : '#000';
+    }
+
+    function updateHUD() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const sound = soundEnabled ? '🔊' : '🔇';
+      mute.textContent = soundEnabled ? '' : '';
+      hud.className = 'hud phase-' + phase;
+      hud.innerHTML = ``;
+      hud.style.opacity = phase === 'symbol' ? 0.9 : 0.6;
+    }
+
+    function playTick() {
+      if (!audioCtx || !soundEnabled || phase !== 'symbol') return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      // приятный короткий «тик»
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(980 + Math.random()*40, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
+      osc.connect(gain).connect(masterGain);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    }
+
+    function startTicking() {
+      stopTicking();
+      playTick();
+      tickingInterval = setInterval(playTick, 1000);
+    }
+
+    function stopTicking() {
+      if (tickingInterval) { clearInterval(tickingInterval); tickingInterval = null; }
+    }
+
+    function clearSymbol() {
+      if (symbolWrapper && symbolWrapper.parentNode) {
+        symbolWrapper.parentNode.removeChild(symbolWrapper);
+      }
+      symbolWrapper = null;
+    }
+
+    function clearPhaseTimer() {
+      if (phaseTimer) { clearTimeout(phaseTimer); phaseTimer = null; }
+    }
+    function clearFreezeTimer() { if (freezeTimer) { clearTimeout(freezeTimer); freezeTimer = null; } }
+    function clearShutterTimer() { if (shutterTimer) { clearTimeout(shutterTimer); shutterTimer = null; } }
+    function clearCounterTimer() { if (counterTimer) { clearInterval(counterTimer); counterTimer = null; } }
+    function clearFocusTimers() {
+      if (window._focusTimers && Array.isArray(window._focusTimers)) {
+        window._focusTimers.forEach(t => clearTimeout(t));
+      }
+      window._focusTimers = [];
+    }
+    function clearLayers() {
+      const back = document.getElementById('layerBack');
+      const mid = document.getElementById('layerMid');
+      const front = document.getElementById('layerFront');
+      [back, mid, front].forEach(el => {
+        if (!el) return;
+        el.innerHTML = '';
+        el.classList.remove('focus', 'unfocus');
+      });
+    }
+
+    function applyDrawAnimation(el, durationMs, delayMs) {
+      try {
+        const length = el.getTotalLength();
+        const lenStr = length.toFixed(1);
+        el.style.strokeDasharray = `${lenStr} ${lenStr}`;
+        el.style.strokeDashoffset = lenStr;
+        const durMs = Math.max(300, Math.floor(durationMs || 1000));
+        const delMs = Math.max(0, Math.floor(delayMs || 0));
+        // старт без transition, чтобы избежать мгновенного перехода
+        el.style.transition = 'none';
+        el.style.willChange = 'stroke-dashoffset';
+        void el.getBoundingClientRect();
+        requestAnimationFrame(() => {
+          el.style.transitionProperty = 'stroke-dashoffset';
+          el.style.transitionTimingFunction = 'linear';
+          el.style.transitionDuration = `${durMs}ms`;
+          el.style.transitionDelay = `${delMs}ms`;
+          requestAnimationFrame(() => {
+            if (!el.isConnected) return;
+            el.style.strokeDashoffset = '0';
+          });
+        });
+      } catch (e) {
+        // элемент может не поддерживать getTotalLength
+      }
+    }
+
+    function animateGlyph(svgRoot, durationMs) {
+      if (!svgRoot) return;
+      const elements = Array.from(svgRoot.querySelectorAll('path, line, polyline, polygon'));
+      const total = elements.length || 1;
+      elements.forEach((el, i) => {
+        const delayMs = Math.floor((i / total) * durationMs);
+        const durMs = Math.max(200, durationMs - delayMs);
+        applyDrawAnimation(el, durMs, delayMs);
+      });
+    }
+
+    function createGlyphSVG(sizePx, strokeColor) {
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('width', sizePx);
+      svg.setAttribute('height', sizePx);
+      svg.setAttribute('viewBox', '0 0 1000 1000');
+      svg.setAttribute('aria-label', 'неизвестный символ');
+
+      // Фон прозрачный, рисуем «незнакомый» знак: смесь линий, дуг и пятен
+      const g = document.createElementNS(svgNS, 'g');
+      g.setAttribute('fill', 'none');
+      g.setAttribute('stroke', strokeColor);
+      g.setAttribute('stroke-linecap', 'round');
+      g.setAttribute('stroke-linejoin', 'round');
+
+      // Случайные параметры штрихов
+      const base = rand(10, 26); // базовая толщина
+      const strokes = randInt(6, 13);
+
+      for (let i = 0; i < strokes; i++) {
+        const path = document.createElementNS(svgNS, 'path');
+        const cx = rand(180, 820); // центр сегмента
+        const cy = rand(180, 820);
+        const r1 = rand(60, 360);
+        const r2 = rand(60, 360);
+        const a1 = rand(0, Math.PI*2);
+        const a2 = a1 + rand(-1.6, 1.6);
+        const x1 = cx + Math.cos(a1) * r1;
+        const y1 = cy + Math.sin(a1) * r1;
+        const x2 = cx + Math.cos(a2) * r2;
+        const y2 = cy + Math.sin(a2) * r2;
+        const qx = cx + rand(-220, 220);
+        const qy = cy + rand(-220, 220);
+        const w = base * rand(0.7, 2.2);
+        path.setAttribute('d', `M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${qx.toFixed(1)} ${qy.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`);
+        path.setAttribute('stroke-width', w.toFixed(2));
+        g.appendChild(path);
+      }
+
+      // Несколько «пятен» для загадочности
+      const blobs = randInt(1, 4);
+      for (let i = 0; i < blobs; i++) {
+        const path = document.createElementNS(svgNS, 'path');
+        const cx = rand(200, 800);
+        const cy = rand(200, 800);
+        const r = rand(40, 180);
+        const k = 0.5522847498; // приблизительно для кривых Безье круга
+        const ox = r * k * rand(0.7, 1.3);
+        const oy = r * k * rand(0.7, 1.3);
+        const strokeW = base * rand(0.9, 1.6);
+        const d = [
+          `M ${cx - r} ${cy}`,
+          `C ${cx - r} ${cy - oy}, ${cx - ox} ${cy - r}, ${cx} ${cy - r}`,
+          `C ${cx + ox} ${cy - r}, ${cx + r} ${cy - oy}, ${cx + r} ${cy}`,
+          `C ${cx + r} ${cy + oy}, ${cx + ox} ${cy + r}, ${cx} ${cy + r}`,
+          `C ${cx - ox} ${cy + r}, ${cx - r} ${cy + oy}, ${cx - r} ${cy} Z`
+        ].join(' ');
+        path.setAttribute('d', d);
+        path.setAttribute('stroke-width', strokeW.toFixed(2));
+        path.setAttribute('fill', 'none');
+        g.appendChild(path);
+      }
+
+      // редкая «штриховка»
+      if (pick(0.35)) {
+        const lines = randInt(6, 14);
+        for (let i = 0; i < lines; i++) {
+          const line = document.createElementNS(svgNS, 'line');
+          const ang = rand(0, Math.PI*2);
+          const len = rand(100, 600);
+          const cx = rand(150, 850);
+          const cy = rand(150, 850);
+          const x1 = cx - Math.cos(ang) * len/2;
+          const y1 = cy - Math.sin(ang) * len/2;
+          const x2 = cx + Math.cos(ang) * len/2;
+          const y2 = cy + Math.sin(ang) * len/2;
+          line.setAttribute('x1', x1.toFixed(1));
+          line.setAttribute('y1', y1.toFixed(1));
+          line.setAttribute('x2', x2.toFixed(1));
+          line.setAttribute('y2', y2.toFixed(1));
+          line.setAttribute('stroke-width', (base*rand(0.4,1.2)).toFixed(2));
+          line.setAttribute('stroke', strokeColor);
+          line.setAttribute('stroke-linecap', 'round');
+          g.appendChild(line);
+        }
+      }
+
+      svg.appendChild(g);
+      return svg;
+    }
+
+    function renderSymbolFor(durationMs) {
+      clearPhaseTimer();
+      clearFreezeTimer();
+      clearShutterTimer();
+      clearCounterTimer();
+      clearFocusTimers();
+      stopTicking();
+      clearSymbol();
+      updateHUD();
+
+      // Опции отображения
+      const flipTheme = pick(0.10); // 10% — инвертируем тему
+      setTheme(flipTheme); // true = тёмная тема (белый на чёрном)
+
+      const sizeRatio = rand(0.30, 0.90); // 30%–90% экрана
+      const vw = Math.max(window.innerWidth, 320);
+      const vh = Math.max(window.innerHeight, 320);
+      const sizePx = Math.floor(Math.min(vw, vh) * sizeRatio);
+
+      const rotate = pick(0.10) ? rand(-35, 35) : 0; // 10% поворот на угол
+
+      // Позиция: по центру, но если <40% — случайное место
+      let left = (vw - sizePx) / 2;
+      let top = (vh - sizePx) / 2;
+      if (sizeRatio < 0.40) {
+        left = rand(0, Math.max(0, vw - sizePx));
+        top = rand(0, Math.max(0, vh - sizePx));
+      }
+
+      // подготовка трёх слоёв символов
+      const layersRoot = document.getElementById('layers');
+      const back = document.getElementById('layerBack');
+      const mid = document.getElementById('layerMid');
+      const front = document.getElementById('layerFront');
+      [back, mid, front].forEach(el => { if (el) { el.innerHTML=''; el.classList.remove('focus','unfocus'); } });
+
+      const strokeColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
+      function mountTo(layerEl, scale) {
+        const wrap = document.createElement('div');
+        wrap.className = 'symbolWrapper';
+        wrap.style.width = sizePx + 'px';
+        wrap.style.height = sizePx + 'px';
+        wrap.style.transform = `translate(0,0) rotate(${rotate}deg) scale(${scale})`;
+        const svg = createGlyphSVG(sizePx, strokeColor);
+        wrap.appendChild(svg);
+        layerEl.appendChild(wrap);
+        animateGlyph(svg, durationMs);
+        return wrap;
+      }
+
+      const wrapBack = mountTo(back, 0.8);
+      const wrapMid = mountTo(mid, 1.0);
+      const wrapFront = mountTo(front, 1.25);
+
+      // фокус-менеджер: чаще центр, иногда задний/передний
+      function setFocus(target) {
+        const map = { back, mid, front };
+        Object.entries(map).forEach(([key, el]) => {
+          if (!el) return;
+          el.classList.toggle('focus', key === target);
+          el.classList.toggle('unfocus', key !== target);
+        });
+        // размыть/снять размытие центральной подписи в такт фокусу среднего слоя
+        const center = document.getElementById('center');
+        if (center) {
+          center.classList.toggle('focusViz', target === 'mid');
+          center.classList.toggle('unfocusViz', target !== 'mid');
+        }
+      }
+      setFocus('mid');
+
+      // переключение фокуса в процессе рисования
+      // гарантируем, что каждый слой будет в фокусе хотя бы раз
+      const focusPlan = ['mid', 'back', 'front'];
+      const extraSwitches = randInt(1, 3);
+      for (let i=0;i<extraSwitches;i++) {
+        const r = Math.random();
+        focusPlan.push(r < 0.5 ? 'mid' : (r < 0.75 ? 'back' : 'front'));
+      }
+      let spent = 0;
+      const switchTimers = [];
+      focusPlan.forEach((layerName, idx) => {
+        const totalSwitches = focusPlan.length;
+        const slice = Math.floor(durationMs / (totalSwitches + 1));
+        spent += slice;
+        const at = spent + randInt(-500, 500);
+        switchTimers.push(setTimeout(() => setFocus(layerName), Math.max(0, at)));
+      });
+      window._focusTimers = switchTimers;
+
+      startTicking();
+
+      // центр: «Восстановление зрения» + обратный счётчик
+      const center = document.getElementById('center');
+      if (center) {
+        center.classList.remove('unfocusViz');
+        center.classList.add('focusViz');
+        const startCount = Math.max(1, Math.ceil(durationMs / 1000));
+        center.innerHTML = `<div><div class="title small pulse-small">Восстановление зрения</div><div class="counter" id="drawCounter">${startCount}</div></div>`;
+      }
+      const counterEl = document.getElementById('drawCounter');
+      if (counterEl) {
+        let remainingSec = Math.max(1, Math.ceil(durationMs / 1000));
+        counterEl.textContent = String(remainingSec);
+        counterTimer = setInterval(() => {
+          remainingSec -= 1;
+          if (remainingSec <= 0) {
+            clearCounterTimer();
+            counterEl.textContent = '0';
+          } else {
+            counterEl.textContent = String(remainingSec);
+          }
+        }, 1000);
+      }
+
+      // заморозка 2с, затем шторки 2с, затем пауза
+      const shutters = document.getElementById('shutters');
+      const freezeLead = 2000;
+      const doFreeze = () => {
+        stopTicking();
+        clearFocusTimers();
+        // остановить текущие переходы линий
+        const els = symbolWrapper ? symbolWrapper.querySelectorAll('path, line, polyline, polygon') : [];
+        els.forEach(el => {
+          const computed = getComputedStyle(el);
+          const current = computed.strokeDashoffset;
+          el.style.transition = 'none';
+          el.style.strokeDashoffset = current;
+        });
+      };
+      // конец рисования -> freeze 2s -> shutters 2s -> пауза
+      freezeTimer = setTimeout(doFreeze, Math.max(0, durationMs));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+    }
+
+    function showSymbol() {
+      phase = 'symbol';
+      const showMs = randInt(15000, 30001);
+      currentDrawMs = showMs;
+      phaseEndAt = performance.now() + showMs + 2000 + 2000; // draw + freeze + shutters
+      const intro = document.getElementById('intro');
+      if (intro) {
+        intro.classList.add('hide');
+        setTimeout(() => { if (intro && intro.parentNode) intro.parentNode.removeChild(intro); }, 600);
+      }
+      hasStarted = true;
+      renderSymbolFor(showMs);
+    }
+
+    function startPause() {
+      phase = 'pause';
+      updateHUD();
+      stopTicking();
+      setTheme(true); // экран паузы всегда белый
+      clearSymbol();
+      clearLayers();
+      clearPhaseTimer();
+      clearFreezeTimer();
+      clearCounterTimer();
+
+      // центр: «Отдых глаз», не показывать на самом первом экране до старта
+      const center = document.getElementById('center');
+      if (center) {
+        center.innerHTML = hasStarted ? `<div class="title large pulse-large">Отдых глаз</div>` : ``;
+        // в паузе надпись всегда в фокусе (не размывать)
+        center.classList.remove('unfocusViz');
+        center.classList.add('focusViz');
+      }
+
+      const pauseMs = randInt(3000, 15001); // 5–10с
+      phaseTimer = setTimeout(showSymbol, pauseMs);
+    }
+
+    function toggleSound() {
+      // Инициализация аудио по первому клику (для мобильных политик авто-плея)
+      if (!audioCtx) {
+        initAudio();
+      } else if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      soundEnabled = !soundEnabled;
+      updateHUD();
+      // попробовать удержание экрана включённым после взаимодействия
+      requestWakeLock();
+    }
+
+    // Клик в любом месте — включает/выключает звук
+    window.addEventListener('click', toggleSound);
+    window.addEventListener('touchstart', function(e){ /* быстрый отклик на мобилках */ }, {passive:true});
+
+    // Перезапозиционирование при ресайзе
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeRaf);
+      resizeRaf = setTimeout(() => {
+        if (phase === 'symbol') {
+          const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
+          phaseEndAt = performance.now() + remaining;
+          renderSymbolFor(remaining);
+        }
+      }, 120);
+    });
+    let resizeRaf = null;
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { /* released */ });
+        }
+      } catch (e) {
+        // недоступно или отклонено
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        // попытка восстановить wake lock
+        if (!wakeLock) requestWakeLock();
+        // восстановить прорисовку символа с оставшимся временем
+        if (phase === 'symbol') {
+          const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
+          phaseEndAt = performance.now() + remaining;
+          renderSymbolFor(remaining);
+        }
+      }
+    });
+
+    // Старт
+    updateHUD();
+    startPause(); // начинаем с паузы
+    // попытка включить wake lock на старте и повторять при взаимодействиях
+    requestWakeLock();
+  })();
+  </script>
+</body>
+</html>
