@@ -280,7 +280,7 @@
 
     function updateHUD() {
       const isDark = document.documentElement.classList.contains('dark');
-      mute.textContent = soundEnabled ? '🔊' : '🔇';
+      mute.textContent = soundEnabled ? '' : '';
       hud.className = 'hud phase-' + phase;
       hud.innerHTML = ``;
       hud.style.opacity = phase === 'symbol' ? 0.9 : 0.6;
