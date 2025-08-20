@@ -254,7 +254,6 @@
 
     let phase = 'pause';
     let symbolWrapper = null;
-    // *** НОВАЯ ПЕРЕМЕННАЯ для хранения последнего режима ***
     let lastSelectedMode = null;
 
     function rand(min, max) { return Math.random() * (max - min) + min; }
@@ -584,7 +583,7 @@
         switchTimers.push(setTimeout(() => setFocus(next), at));
         lastFocus = next;
       }
-      window._focusTimers = switchTimers;
+      window._focusTimers.push(...switchTimers);
       
       let running = true;
       function drawWords(ctx, words, now) {
@@ -862,7 +861,7 @@
         const at = spent + randInt(-500, 500);
         switchTimers.push(setTimeout(() => setFocus(layerName), Math.max(0, at)));
       });
-      window._focusTimers = switchTimers;
+      window._focusTimers.push(...switchTimers);
 
       startTicking();
 
@@ -935,14 +934,13 @@
       if (document.getElementById('modeTarget').checked) availableModes.push('target');
       if (document.getElementById('modeWords').checked) availableModes.push('words');
       
-      // *** ИЗМЕНЕНИЕ: Логика, исключающая повтор режима "Мишень" ***
       let selectionPool = [...availableModes];
       if (lastSelectedMode === 'target' && availableModes.length > 1) {
         selectionPool = availableModes.filter(mode => mode !== 'target');
       }
 
       const selectedMode = selectionPool[Math.floor(Math.random() * selectionPool.length)];
-      lastSelectedMode = selectedMode; // Запоминаем текущий выбор для следующего цикла
+      lastSelectedMode = selectedMode;
 
       if (selectedMode === 'target') {
         renderTargetMode(showMs);
@@ -967,8 +965,10 @@
       const center = document.getElementById('center');
       if (center) {
         center.innerHTML = `
-          <div class="title large pulse-large">Отдых...</div>
-          <small style="margin-top:20px; font-size: 16px; opacity: 0.7;">Нажмите для продолжения</small>
+          <div>
+            <div class="title large pulse-large">Отдых...</div>
+            <small style="position: absolute; bottom: 30%; left: 0; right: 0; font-size: 16px; opacity: 0.7;">Нажмите для продолжения</small>
+          </div>
         `;
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
