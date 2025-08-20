@@ -139,8 +139,8 @@
     }
     .layer {
       position: absolute;
-      display: grid;
-      place-items: center;
+      width: 100%;
+      height: 100%;
       transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out, transform 2500ms ease-in-out;
       will-change: filter, transform, opacity;
     }
@@ -317,7 +317,7 @@
 
     function animateGlyph(svgRoot, durationMs) {
       if (!svgRoot) return;
-      const elements = Array.from(svgRoot.querySelectorAll('path, line, polyline, polygon'));
+      const elements = Array.from(svgRoot.querySelectorAll('path, line, polyline, polygon, circle, rect'));
       const total = elements.length || 1;
       elements.forEach((el, i) => {
         const delayMs = Math.floor((i / total) * durationMs);
@@ -417,7 +417,29 @@
       return svg;
     }
 
-    function renderSymbolFor(durationMs) {
+    // Генерация слова из перемешанных букв трёх алфавитов
+    function mixedLangWord() {
+      const ru = 'абвгдеёжзийклмнопрстуфхцчшщьыъэюя';
+      const en = 'abcdefghijklmnopqrstuvwxyz';
+      const cn = '的一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政四日那社义事平形相全表间样与关各重新线内数正心反你明看原又么利比或但质气第向道命此变条只没结解问意建月公无系军很情者最立代想已通并提直题党程展五果料象员革位入常文总次品式活设及管特件长求老头基资边流路级少图山统接知较将组见计别她手角期根论运农指几九区强放决西被干做必战先回则任取据处队南给色光门即保治北造百规热领七海口东导器压志世金增争济阶油思术极交受联什认六共权收证改清己美再采转单风切打白教速花带安场身车例真务具万每目至达走积示议声报斗完类八离华名确才科张信马节话米整空元况今集温传土许步群广石记需段研界拉林律叫且究观越织装影算低持音众书布复容儿须际商非验连断深难近矿千周委素技备半办青省列习响约支般史感劳便团往酸历市克何除消构府称太准精值号率族维划选标写存候毛亲快效斯院查江型眼王按格养易置派层片始却专状育厂京识适属圆包火住调满县局照参红细备绿权码';
+      // по одной букве из каждого алфавита, затем перемешать
+      let arr = [];
+      for (let i = 0; i < randInt(4, 8); i++) {
+        arr.push(ru[randInt(0, ru.length)]);
+        arr.push(en[randInt(0, en.length)]);
+        arr.push(cn[randInt(0, cn.length)]);
+      }
+      // перемешать
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr.slice(0, randInt(4, 10)).join('');
+    }
+
+    // Новый режим: слова летят к нам или от нас
+    function renderWordsMode(durationMs) {
+      const startTime = performance.now();
       clearPhaseTimer();
       clearFreezeTimer();
       clearShutterTimer();
@@ -427,63 +449,73 @@
       stopTicking();
       clearSymbol();
       updateHUD();
+      setTheme(pick(0.5));
+      startTicking();
 
-      // Опции отображения
-      const flipTheme = pick(0.10); // 10% — инвертируем тему
-      setTheme(flipTheme); // true = тёмная тема (белый на чёрном)
-
-      const sizeRatio = rand(0.30, 0.90); // 30%–90% экрана
-      const vw = Math.max(window.innerWidth, 320);
-      const vh = Math.max(window.innerHeight, 320);
-      const minDim = Math.min(vw, vh);
-      const maxScale = 1.25; // самый ближний слой
-      const sizePx = Math.floor(minDim * sizeRatio / maxScale);
-
-      const rotate = 0; // без поворота, гарантируем полное вмещение
-
-      // Позиция: по центру, но если <40% — случайное место
-      let left = (vw - sizePx) / 2;
-      let top = (vh - sizePx) / 2;
-      if (sizeRatio < 0.40) {
-        left = rand(0, Math.max(0, vw - sizePx));
-        top = rand(0, Math.max(0, vh - sizePx));
-      }
-
-      // подготовка трёх слоёв символов
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
       const mid = document.getElementById('layerMid');
       const front = document.getElementById('layerFront');
       [back, mid, front].forEach(el => { if (el) { el.innerHTML=''; el.classList.remove('focus','unfocus'); } });
-      // плавное появление экрана рисовки
       if (layersRoot) {
         layersRoot.style.opacity = '0';
         layersRoot.style.transition = 'opacity 800ms ease';
       }
-
-      const strokeColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
-      function mountTo(layerEl, scale) {
-        const wrap = document.createElement('div');
-        wrap.className = 'symbolWrapper';
-        wrap.style.width = sizePx + 'px';
-        wrap.style.height = sizePx + 'px';
-        wrap.style.transform = `translate(0,0) rotate(${rotate}deg) scale(${scale})`;
-        const svg = createGlyphSVG(sizePx, strokeColor);
-        wrap.appendChild(svg);
-        layerEl.appendChild(wrap);
-        animateGlyph(svg, durationMs);
-        return wrap;
+      requestAnimationFrame(() => { if (layersRoot) layersRoot.style.opacity = '1'; });
+      // параметры
+      const vw = Math.max(window.innerWidth, 320);
+      const vh = Math.max(window.innerHeight, 320);
+      // Удалить все старые canvas из слоёв
+      [back, mid, front].forEach(el => {
+        if (el) {
+          Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove());
+        }
+      });
+      // canvas для каждого слоя
+      function createLayerCanvas(parent) {
+        const c = document.createElement('canvas');
+        c.width = vw;
+        c.height = vh;
+        c.style.position = 'absolute';
+        c.style.left = '0';
+        c.style.top = '0';
+        c.style.width = '100%';
+        c.style.height = '100%';
+        parent.appendChild(c);
+        return c;
       }
+      const canvBack = createLayerCanvas(back);
+      const canvMid = createLayerCanvas(mid);
+      const canvFront = createLayerCanvas(front);
+      
+      const nWords = 3; 
+      const allWords = [];
+      for (let i = 0; i < nWords; i++) {
+        const word = mixedLangWord();
+        let fontSize;
+        if (i === nWords - 1) { // последнее слово будет очень мелким
+            fontSize = rand(14, 22);
+        } else {
+            fontSize = rand(48, 120);
+        }
+        
+        const direction = pick(0.5) ? 1 : -1; 
+        const y = rand(0.2, 0.8) * vh;
+        const x0 = vw / 2;
+        const moveDistance = rand(vw * 0.1, vw * 0.25); 
+        const x1 = vw / 2 + (moveDistance * direction);
 
-      const wrapBack = mountTo(back, 0.8);
-      const wrapMid = mountTo(mid, 1.0);
-      const wrapFront = mountTo(front, 1.25);
-
-      if (layersRoot) {
-        requestAnimationFrame(() => { layersRoot.style.opacity = '1'; });
+        const duration = durationMs;
+        const layer = ['back', 'mid', 'front'][i];
+        allWords.push({word, fontSize, y, x0, x1, duration, t0: startTime, layer, direction});
       }
-
-      // фокус-менеджер: чаще центр, иногда задний/передний
+      
+      const wordsByLayer = {back: [], mid: [], front: []};
+      allWords.forEach(w => wordsByLayer[w.layer].push(w));
+      
+      const isDark = document.documentElement.classList.contains('dark');
+      const wordColor = isDark ? '#fff' : '#000';
+      
       function setFocus(target) {
         const map = { back, mid, front };
         Object.entries(map).forEach(([key, el]) => {
@@ -491,7 +523,6 @@
           el.classList.toggle('focus', key === target);
           el.classList.toggle('unfocus', key !== target);
         });
-        // размыть/снять размытие центральной подписи в такт фокусу среднего слоя
         const center = document.getElementById('center');
         if (center) {
           center.classList.toggle('focusViz', target === 'mid');
@@ -499,29 +530,50 @@
         }
       }
       setFocus('mid');
-
-      // переключение фокуса в процессе рисования
-      // гарантируем, что каждый слой будет в фокусе хотя бы раз
-      const focusPlan = ['mid', 'back', 'front'];
-      const extraSwitches = randInt(1, 3);
-      for (let i=0;i<extraSwitches;i++) {
-        const r = Math.random();
-        focusPlan.push(r < 0.5 ? 'mid' : (r < 0.75 ? 'back' : 'front'));
-      }
-      let spent = 0;
+      
+      const focusNames = ['mid', 'back', 'front'];
+      const nSwitches = Math.max(1, Math.floor(durationMs / 3000));
+      let lastFocus = 'mid';
       const switchTimers = [];
-      focusPlan.forEach((layerName, idx) => {
-        const totalSwitches = focusPlan.length;
-        const slice = Math.floor(durationMs / (totalSwitches + 1));
-        spent += slice;
-        const at = spent + randInt(-500, 500);
-        switchTimers.push(setTimeout(() => setFocus(layerName), Math.max(0, at)));
-      });
+      for (let i = 0; i < nSwitches; i++) {
+        let next;
+        do {
+          next = focusNames[randInt(0, 3)];
+        } while (next === lastFocus);
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1));
+        switchTimers.push(setTimeout(() => setFocus(next), at));
+        lastFocus = next;
+      }
       window._focusTimers = switchTimers;
-
-      startTicking();
-
-      // центр: «Восстановление зрения» + обратный счётчик (заголовок синхронно прячется/показывается с таймером)
+      
+      let running = true;
+      function drawWords(ctx, words, now) {
+        ctx.clearRect(0, 0, vw, vh);
+        words.forEach(w => {
+          const p = Math.min(1, (now - w.t0) / w.duration);
+          const x = w.x0 + (w.x1 - w.x0) * p;
+          ctx.save();
+          ctx.globalAlpha = 1;
+          ctx.font = `bold ${Math.floor(w.fontSize)}px system-ui, Arial, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = wordColor;
+          ctx.fillText(w.word, x, w.y);
+          ctx.restore();
+        });
+      }
+      function animate() {
+        if (!running) return;
+        const now = performance.now();
+        drawWords(canvBack.getContext('2d'), wordsByLayer.back, now);
+        drawWords(canvMid.getContext('2d'), wordsByLayer.mid, now);
+        drawWords(canvFront.getContext('2d'), wordsByLayer.front, now);
+        if (now - startTime < durationMs) {
+          requestAnimationFrame(animate);
+        }
+      }
+      animate();
+      
       const center = document.getElementById('center');
       if (center) {
         center.classList.remove('unfocusViz');
@@ -545,27 +597,250 @@
             counterEl.textContent = String(remainingSec);
           }
         }, 1000);
-        // окно видимости: первые 10с и последние 7с
+        
         const visTimers = [];
-        // изначально показываем оба
         setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, 0);
-        // скрываем через 10с
         visTimers.push(setTimeout(() => { counterEl.style.opacity = '0'; if (titleEl) titleEl.classList.add('hiddenSoft'); }, 10000));
-        // показываем за 7с до конца
+        if (durationMs > 7000) {
+          visTimers.push(setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, Math.max(0, durationMs - 7000)));
+        }
+        window._counterVisTimers = visTimers;
+      }
+      
+      const shutters = document.getElementById('shutters');
+      const freezeLead = 2000;
+      freezeTimer = setTimeout(() => { 
+          running = false;
+          stopTicking();
+      }, Math.max(0, durationMs));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+    }
+    
+    // Новый режим: мишень
+    function renderTargetMode(durationMs) {
+      clearPhaseTimer();
+      clearFreezeTimer();
+      clearShutterTimer();
+      clearCounterTimer();
+      clearFocusTimers();
+      clearCounterVisTimers();
+      stopTicking();
+      clearSymbol();
+      updateHUD();
+      setTheme(pick(0.5));
+      startTicking();
+
+      const vw = Math.max(window.innerWidth, 320);
+      const vh = Math.max(window.innerHeight, 320);
+      const cx = vw / 2;
+      const cy = vh / 2;
+      const layersRoot = document.getElementById('layers');
+      const midLayer = document.getElementById('layerMid');
+      clearLayers();
+      
+      // ***ИЗМЕНЕНИЕ: Очищаем центральный оверлей, чтобы скрыть таймер***
+      const center = document.getElementById('center');
+      if (center) {
+        center.innerHTML = '';
+      }
+      
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('width', vw);
+      svg.setAttribute('height', vh);
+      svg.style.position = 'absolute';
+      midLayer.appendChild(svg);
+      
+      if (layersRoot) { 
+        layersRoot.style.opacity = '0';
+        requestAnimationFrame(() => { layersRoot.style.opacity = '1'; });
+      }
+
+      const stepDuration = 3500;
+      const numSteps = Math.max(2, Math.floor(durationMs / stepDuration));
+      const initialRadius = Math.min(vw, vh) * 0.45;
+      const finalRadius = 4;
+      const strokeColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
+      let previousCircle = null;
+      const allTimers = [];
+
+      for (let i = 0; i < numSteps; i++) {
+        const timerId = setTimeout(() => {
+          if (previousCircle) {
+            previousCircle.style.transition = 'filter 1500ms ease-in-out, stroke-opacity 1500ms ease-in-out';
+            previousCircle.style.filter = 'blur(7px)';
+            previousCircle.style.strokeOpacity = '0.5';
+          }
+
+          const p = i / (numSteps - 1);
+          const currentRadius = initialRadius * (1 - p) + finalRadius * p;
+          const strokeWidth = Math.max(2, 20 * (1 - p));
+
+          const circle = document.createElementNS(svgNS, 'circle');
+          circle.setAttribute('cx', cx.toFixed(1));
+          circle.setAttribute('cy', cy.toFixed(1));
+          circle.setAttribute('r', currentRadius.toFixed(1));
+          circle.setAttribute('stroke', strokeColor);
+          circle.setAttribute('stroke-width', strokeWidth.toFixed(2));
+          circle.setAttribute('fill', 'none');
+          
+          svg.appendChild(circle);
+          
+          applyDrawAnimation(circle, stepDuration * 0.8, 100);
+
+          previousCircle = circle;
+
+        }, i * stepDuration);
+        allTimers.push(timerId);
+      }
+      
+      window._focusTimers = allTimers;
+
+      // ***ИЗМЕНЕНИЕ: Весь блок создания и управления таймером удален отсюда***
+
+      const shutters = document.getElementById('shutters');
+      const freezeLead = 2000;
+      const doFreeze = () => {
+        stopTicking();
+        clearFocusTimers();
+      };
+      freezeTimer = setTimeout(doFreeze, Math.max(0, durationMs));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+    }
+
+
+    function renderSymbolFor(durationMs) {
+      clearPhaseTimer();
+      clearFreezeTimer();
+      clearShutterTimer();
+      clearCounterTimer();
+      clearFocusTimers();
+      clearCounterVisTimers();
+      stopTicking();
+      clearSymbol();
+      updateHUD();
+
+      const flipTheme = pick(0.10);
+      setTheme(flipTheme);
+
+      const sizeRatio = rand(0.30, 0.90);
+      const vw = Math.max(window.innerWidth, 320);
+      const vh = Math.max(window.innerHeight, 320);
+      const minDim = Math.min(vw, vh);
+      const maxScale = 1.25;
+      const sizePx = Math.floor(minDim * sizeRatio / maxScale);
+      const rotate = 0;
+      let left = (vw - sizePx) / 2;
+      let top = (vh - sizePx) / 2;
+
+      const layersRoot = document.getElementById('layers');
+      const back = document.getElementById('layerBack');
+      const mid = document.getElementById('layerMid');
+      const front = document.getElementById('layerFront');
+      [back, mid, front].forEach(el => { if (el) { el.innerHTML=''; el.classList.remove('focus','unfocus'); } });
+      
+      if (layersRoot) {
+        layersRoot.style.opacity = '0';
+        layersRoot.style.transition = 'opacity 800ms ease';
+      }
+
+      const strokeColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
+      function mountTo(layerEl, scale) {
+        const wrap = document.createElement('div');
+        wrap.className = 'symbolWrapper';
+        wrap.style.width = sizePx + 'px';
+        wrap.style.height = sizePx + 'px';
+        wrap.style.transform = `translate(${left}px,${top}px) rotate(${rotate}deg) scale(${scale})`;
+        const svg = createGlyphSVG(sizePx, strokeColor);
+        wrap.appendChild(svg);
+        layerEl.appendChild(wrap);
+        animateGlyph(svg, durationMs);
+        return wrap;
+      }
+
+      const wrapBack = mountTo(back, 0.8);
+      const wrapMid = mountTo(mid, 1.0);
+      const wrapFront = mountTo(front, 1.25);
+
+      if (layersRoot) {
+        requestAnimationFrame(() => { layersRoot.style.opacity = '1'; });
+      }
+
+      function setFocus(target) {
+        const map = { back, mid, front };
+        Object.entries(map).forEach(([key, el]) => {
+          if (!el) return;
+          el.classList.toggle('focus', key === target);
+          el.classList.toggle('unfocus', key !== target);
+        });
+        const center = document.getElementById('center');
+        if (center) {
+          center.classList.toggle('focusViz', target === 'mid');
+          center.classList.toggle('unfocusViz', target !== 'mid');
+        }
+      }
+      setFocus('mid');
+
+      const focusPlan = ['mid', 'back', 'front'];
+      const extraSwitches = randInt(1, 3);
+      for (let i=0;i<extraSwitches;i++) {
+        const r = Math.random();
+        focusPlan.push(r < 0.5 ? 'mid' : (r < 0.75 ? 'back' : 'front'));
+      }
+      let spent = 0;
+      const switchTimers = [];
+      focusPlan.forEach((layerName, idx) => {
+        const totalSwitches = focusPlan.length;
+        const slice = Math.floor(durationMs / (totalSwitches + 1));
+        spent += slice;
+        const at = spent + randInt(-500, 500);
+        switchTimers.push(setTimeout(() => setFocus(layerName), Math.max(0, at)));
+      });
+      window._focusTimers = switchTimers;
+
+      startTicking();
+
+      const center = document.getElementById('center');
+      if (center) {
+        center.classList.remove('unfocusViz');
+        center.classList.add('focusViz');
+        const startCount = Math.max(1, Math.ceil(durationMs / 1000));
+        center.innerHTML = `<div><div class=\"title small pulse-small hiddenSoft\" id=\"visionTitle\"> </div><div class=\"counter\" id=\"drawCounter\">${startCount}</div></div>`;
+      }
+      const counterEl = document.getElementById('drawCounter');
+      const titleEl = document.getElementById('visionTitle');
+      if (counterEl) {
+        let remainingSec = Math.max(1, Math.ceil(durationMs / 1000));
+        counterEl.textContent = String(remainingSec);
+        counterEl.style.transition = 'opacity 3000ms ease-in-out';
+        if (titleEl) titleEl.style.transition = 'opacity 3000ms ease-in-out';
+        counterTimer = setInterval(() => {
+          remainingSec -= 1;
+          if (remainingSec <= 0) {
+            clearCounterTimer();
+            counterEl.textContent = '0';
+          } else {
+            counterEl.textContent = String(remainingSec);
+          }
+        }, 1000);
+        
+        const visTimers = [];
+        setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, 0);
+        visTimers.push(setTimeout(() => { counterEl.style.opacity = '0'; if (titleEl) titleEl.classList.add('hiddenSoft'); }, 10000));
         if (durationMs > 7000) {
           visTimers.push(setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, Math.max(0, durationMs - 7000)));
         }
         window._counterVisTimers = visTimers;
       }
 
-      // заморозка 2с, затем шторки 2с, затем пауза
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
       const doFreeze = () => {
         stopTicking();
         clearFocusTimers();
-        // остановить текущие переходы линий
-        const els = symbolWrapper ? symbolWrapper.querySelectorAll('path, line, polyline, polygon') : [];
+        const els = symbolWrapper ? symbolWrapper.querySelectorAll('path, line, polyline, polygon, circle') : [];
         els.forEach(el => {
           const computed = getComputedStyle(el);
           const current = computed.strokeDashoffset;
@@ -573,7 +848,6 @@
           el.style.strokeDashoffset = current;
         });
       };
-      // конец рисования -> freeze 2s -> shutters 2s -> пауза
       freezeTimer = setTimeout(doFreeze, Math.max(0, durationMs));
       shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
       phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
@@ -590,7 +864,15 @@
         setTimeout(() => { if (intro && intro.parentNode) intro.parentNode.removeChild(intro); }, 600);
       }
       hasStarted = true;
-      renderSymbolFor(showMs);
+      
+      const r = Math.random();
+      if (r < 0.3) { // 30% шанс на режим мишени
+        renderTargetMode(showMs);
+      } else if (r < 0.6) { // 30% шанс на режим слов
+        renderWordsMode(showMs);
+      } else { // 40% на режим символов
+        renderSymbolFor(showMs);
+      }
     }
 
     function startPause() {
@@ -604,21 +886,18 @@
       clearFreezeTimer();
       clearCounterTimer();
 
-      // центр: эмодзи с закрытыми глазами вместо текста, не показывать на самом первом экране до старта
       const center = document.getElementById('center');
       if (center) {
         center.innerHTML = hasStarted ? `<div class="title large pulse-large">Отдых...</div>` : ``;
-        // в паузе надпись всегда в фокусе (не размывать)
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
       }
 
-      const pauseMs = randInt(3000, 15001); // 5–10с
+      const pauseMs = randInt(3000, 15001);
       phaseTimer = setTimeout(showSymbol, pauseMs);
     }
 
     function toggleSound() {
-      // Инициализация аудио по первому клику (для мобильных политик авто-плея)
       if (!audioCtx) {
         initAudio();
       } else if (audioCtx.state === 'suspended') {
@@ -626,22 +905,19 @@
       }
       soundEnabled = !soundEnabled;
       updateHUD();
-      // попробовать удержание экрана включённым после взаимодействия
       requestWakeLock();
     }
 
-    // Клик в любом месте — включает/выключает звук
     window.addEventListener('click', toggleSound);
     window.addEventListener('touchstart', function(e){ /* быстрый отклик на мобилках */ }, {passive:true});
 
-    // Перезапозиционирование при ресайзе
     window.addEventListener('resize', () => {
       clearTimeout(resizeRaf);
       resizeRaf = setTimeout(() => {
         if (phase === 'symbol') {
           const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
           phaseEndAt = performance.now() + remaining;
-          renderSymbolFor(remaining);
+          showSymbol(); // Перезапускаем текущий режим с оставшимся временем
         }
       }, 120);
     });
@@ -660,22 +936,18 @@
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        // попытка восстановить wake lock
         if (!wakeLock) requestWakeLock();
-        // восстановить прорисовку символа с оставшимся временем
         if (phase === 'symbol') {
           const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
           phaseEndAt = performance.now() + remaining;
-          renderSymbolFor(remaining);
+          showSymbol(); // Перезапускаем текущий режим с оставшимся временем
         }
       }
     });
 
-    // Старт: показываем интро 7 секунд на чёрном фоне
     updateHUD();
     setTheme(true);
     setTimeout(showSymbol, 7000);
-    // попытка включить wake lock на старте и повторять при взаимодействиях
     requestWakeLock();
   })();
   </script>
