@@ -539,7 +539,6 @@
         }
         
         const direction = pick(0.5) ? 1 : -1; 
-        // *** ИЗМЕНЕНИЕ: Все слова на одной линии по центру ***
         const y = vh / 2;
         const x0 = vw / 2;
         const moveDistance = rand(vw * 0.1, vw * 0.25); 
@@ -622,36 +621,7 @@
       if (center) {
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
-        center.innerHTML = `<div><div class="counter hiddenSoft" id="drawCounter">1</div></div>`;
-      }
-      const counterEl = document.getElementById('drawCounter');
-      if (counterEl) {
-        let elapsedSec = 0;
-        const totalSec = Math.ceil(durationMs / 1000);
-        counterEl.textContent = '1';
-        
-        counterTimer = setInterval(() => {
-          elapsedSec++;
-          if (elapsedSec >= totalSec) {
-            clearCounterTimer();
-          } else {
-            counterEl.textContent = String(elapsedSec + 1);
-          }
-        }, 1000);
-        
-        const visTimers = [];
-        setTimeout(() => { 
-            if(counterEl) counterEl.classList.remove('hiddenSoft');
-        }, 0);
-        visTimers.push(setTimeout(() => { 
-            if(counterEl) counterEl.classList.add('hiddenSoft');
-        }, 10000));
-        if (durationMs > 7000) {
-          visTimers.push(setTimeout(() => { 
-            if(counterEl) counterEl.classList.remove('hiddenSoft');
-          }, Math.max(0, durationMs - 7000)));
-        }
-        window._counterVisTimers = visTimers;
+        center.innerHTML = ``; // *** ИЗМЕНЕНИЕ: Убираем таймер ***
       }
       
       const shutters = document.getElementById('shutters');
@@ -870,38 +840,9 @@
       if (center) {
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
-        center.innerHTML = `<div><div class="counter hiddenSoft" id="drawCounter">1</div></div>`;
+        center.innerHTML = ``; // *** ИЗМЕНЕНИЕ: Убираем таймер ***
       }
-      const counterEl = document.getElementById('drawCounter');
-      if (counterEl) {
-        let elapsedSec = 0;
-        const totalSec = Math.ceil(durationMs / 1000);
-        counterEl.textContent = '1';
-        
-        counterTimer = setInterval(() => {
-          elapsedSec++;
-          if (elapsedSec >= totalSec) {
-            clearCounterTimer();
-          } else {
-            counterEl.textContent = String(elapsedSec + 1);
-          }
-        }, 1000);
-        
-        const visTimers = [];
-        setTimeout(() => { 
-            if(counterEl) counterEl.classList.remove('hiddenSoft');
-        }, 0);
-        visTimers.push(setTimeout(() => { 
-            if(counterEl) counterEl.classList.add('hiddenSoft');
-        }, 10000));
-        if (durationMs > 7000) {
-          visTimers.push(setTimeout(() => { 
-            if(counterEl) counterEl.classList.remove('hiddenSoft');
-          }, Math.max(0, durationMs - 7000)));
-        }
-        window._counterVisTimers = visTimers;
-      }
-
+      
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
       const doFreeze = () => {
