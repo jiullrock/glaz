@@ -47,7 +47,6 @@
     }
     .symbolWrapper.hidden { display: none; }
     .symbolWrapper svg { shape-rendering: geometricPrecision; }
-    /* *** ИЗМЕНЕНИЕ: Анимация фокуса теперь длится 5 секунд *** */
     .target-circle {
       transition: filter 5000ms ease-in-out, opacity 5000ms ease-in-out;
       filter: blur(7px);
@@ -255,6 +254,8 @@
 
     let phase = 'pause';
     let symbolWrapper = null;
+    // *** НОВАЯ ПЕРЕМЕННАЯ для хранения последнего режима ***
+    let lastSelectedMode = null;
 
     function rand(min, max) { return Math.random() * (max - min) + min; }
     function randInt(min, max) { return Math.floor(rand(min, max)); }
@@ -723,7 +724,6 @@
 
       function processCircleStep(index) {
           if (index >= circlesData.length) {
-              // Final step: focus on the dot
               const finalFocusTimer = setTimeout(() => {
                   if (drawnCircleElements.length > 0) {
                       drawnCircleElements[drawnCircleElements.length - 1].classList.remove('focus');
@@ -753,15 +753,13 @@
           applyDrawAnimation(circleEl, stepInterval * 0.8, 0);
           drawnCircleElements.push(circleEl);
 
-          // Focus on the new circle, defocus the old one
           setTimeout(() => {
               if (index > 0) {
                   drawnCircleElements[index - 1].classList.remove('focus');
               }
               circleEl.classList.add('focus');
-          }, 50); // Small delay to ensure styles apply
+          }, 50);
 
-          // Schedule next step
           const nextStepTimer = setTimeout(() => {
               processCircleStep(index + 1);
           }, stepInterval);
@@ -937,7 +935,14 @@
       if (document.getElementById('modeTarget').checked) availableModes.push('target');
       if (document.getElementById('modeWords').checked) availableModes.push('words');
       
-      const selectedMode = availableModes[Math.floor(Math.random() * availableModes.length)];
+      // *** ИЗМЕНЕНИЕ: Логика, исключающая повтор режима "Мишень" ***
+      let selectionPool = [...availableModes];
+      if (lastSelectedMode === 'target' && availableModes.length > 1) {
+        selectionPool = availableModes.filter(mode => mode !== 'target');
+      }
+
+      const selectedMode = selectionPool[Math.floor(Math.random() * selectionPool.length)];
+      lastSelectedMode = selectedMode; // Запоминаем текущий выбор для следующего цикла
 
       if (selectedMode === 'target') {
         renderTargetMode(showMs);
@@ -972,8 +977,11 @@
       app.addEventListener('click', proceedToNextCycle, { once: true });
     }
     
-    function proceedToNextCycle() {
-        if(phase === 'pause') { // Доп. проверка, чтобы избежать случайных срабатываний
+    function proceedToNextCycle(event) {
+        if(event) {
+          event.stopPropagation();
+        }
+        if(phase === 'pause') { 
             showSymbol();
         }
     }
@@ -982,7 +990,7 @@
       clearTimeout(resizeRaf);
       resizeRaf = setTimeout(() => {
         if (phase === 'symbol') {
-          app.removeEventListener('click', proceedToNextCycle); // Отвязываем старый обработчик
+          app.removeEventListener('click', proceedToNextCycle);
           const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
           phaseEndAt = performance.now() + remaining;
           showSymbol();
@@ -1043,7 +1051,7 @@
       });
       
       startButton.addEventListener('click', (e) => {
-        e.stopPropagation(); // Предотвращаем срабатывание глобального click listener
+        e.stopPropagation();
         showSymbol();
         if (soundEnabled && !audioCtx) initAudio();
       });
