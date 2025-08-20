@@ -115,13 +115,13 @@
       font-size: clamp(14px, 3vw, 18px);
       font-weight: 500;
     }
-    #intro-settings label {
+    #intro-settings label, #sound-toggle {
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    #intro-settings input[type="checkbox"] {
+    #intro-settings input[type="checkbox"], #soundCheckbox {
       width: 18px;
       height: 18px;
     }
@@ -206,7 +206,7 @@
 <body>
   <div id="app" aria-label="GLAZ тренажёр" role="application"></div>
   <div class="hud" id="hud"></div>
-  <div class="muteBadge" id="mute">🔊 Звук включён</div>
+  <div class="muteBadge" id="mute"></div>
   <div class="intro" id="intro">
     <div class="intro-content">
       <div id="intro-title" style="line-height: 1.1;">GLAZ<br><small style="font-size: clamp(14px, 3vw, 22px); opacity: 0.8;">Тренажёр для глаз</small></div>
@@ -216,7 +216,13 @@
           <label><input type="checkbox" id="modeWords" value="words" checked><span>Слова</span></label>
       </div>
       <button id="startButton">Старт</button>
-      <small>Клик в любом месте во время цикла включает/выключает звук</small>
+      <!-- *** ИЗМЕНЕНИЕ: Чекбокс для звука *** -->
+      <label id="sound-toggle" style="font-size: 16px; font-weight: 500;">
+        <input type="checkbox" id="soundCheckbox">
+        <span>Включить звук</span>
+      </label>
+      <!-- *** ИЗМЕНЕНИЕ: Обновленный текст *** -->
+      <small>Выбранные режимы будут переключаться</small>
       <small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small>
     </div>
   </div>
@@ -275,8 +281,7 @@
 
     function updateHUD() {
       const isDark = document.documentElement.classList.contains('dark');
-      const sound = soundEnabled ? '🔊' : '🔇';
-      mute.textContent = soundEnabled ? '' : '';
+      mute.textContent = soundEnabled ? '🔊' : '🔇';
       hud.className = 'hud phase-' + phase;
       hud.innerHTML = ``;
       hud.style.opacity = phase === 'symbol' ? 0.9 : 0.6;
@@ -617,7 +622,6 @@
       if (center) {
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
-        // *** ИСПРАВЛЕНИЕ: Убираем надпись ***
         center.innerHTML = `<div><div class="counter" id="drawCounter">1</div></div>`;
       }
       const counterEl = document.getElementById('drawCounter');
@@ -946,6 +950,7 @@
       }
     }
 
+    // *** ИСПРАВЛЕНИЕ: Новая логика экрана паузы ***
     function startPause() {
       phase = 'pause';
       updateHUD();
@@ -959,29 +964,21 @@
 
       const center = document.getElementById('center');
       if (center) {
-        center.innerHTML = hasStarted ? `<div class="title large pulse-large">Отдых...</div>` : ``;
+        center.innerHTML = `
+          <div class="title large pulse-large">Отдых...</div>
+          <small style="margin-top:20px; font-size: 16px; opacity: 0.7;">Нажмите для продолжения</small>
+        `;
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
       }
 
-      const pauseMs = randInt(3000, 15001);
-      phaseTimer = setTimeout(showSymbol, pauseMs);
+      // Ждем клика для продолжения
+      app.addEventListener('click', proceedToNextCycle, { once: true });
     }
-
-    function toggleSound() {
-      if (!hasStarted) return;
-      if (!audioCtx) {
-        initAudio();
-      } else if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-      soundEnabled = !soundEnabled;
-      updateHUD();
-      requestWakeLock();
+    
+    function proceedToNextCycle() {
+        showSymbol();
     }
-
-    window.addEventListener('click', toggleSound);
-    window.addEventListener('touchstart', function(e){}, {passive:true});
 
     window.addEventListener('resize', () => {
       clearTimeout(resizeRaf);
@@ -1017,6 +1014,7 @@
 
     function initIntroScreen() {
       const startButton = document.getElementById('startButton');
+      const soundCheckbox = document.getElementById('soundCheckbox');
       const checkboxes = [
         document.getElementById('modeSymbol'),
         document.getElementById('modeTarget'),
@@ -1036,9 +1034,17 @@
         cb.addEventListener('change', validateCheckboxes);
       });
       
+      soundCheckbox.addEventListener('change', () => {
+        soundEnabled = soundCheckbox.checked;
+        if(soundEnabled && !audioCtx) {
+            initAudio();
+        }
+        updateHUD();
+      });
+      
       startButton.addEventListener('click', () => {
         showSymbol();
-        if (!audioCtx) initAudio();
+        if (soundEnabled && !audioCtx) initAudio();
       });
 
       validateCheckboxes();
