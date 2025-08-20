@@ -75,7 +75,7 @@
       display: grid;
       place-items: center;
       z-index: 1000;
-      pointer-events: none;
+      pointer-events: auto; /* *** ИЗМЕНЕНИЕ: Включаем взаимодействие *** */
       color: #ffffff;
       background: #000000;
       font-weight: 700;
@@ -83,10 +83,10 @@
       line-height: 1.1;
       letter-spacing: 0.02em;
       text-align: center;
-      opacity: 0.92;
+      opacity: 1; /* *** ИЗМЕНЕНИЕ: Делаем непрозрачным по умолчанию *** */
       transition: opacity .5s ease;
     }
-    .intro.hide { opacity: 0; }
+    .intro.hide { opacity: 0; pointer-events: none; /* *** ИЗМЕНЕНИЕ: Отключаем взаимодействие после скрытия *** */ }
     .intro small {
       display: block;
       margin-top: 12px;
@@ -94,10 +94,46 @@
       font-size: clamp(12px, 2.5vw, 16px);
       opacity: 0.7;
     }
+    /* *** НОВЫЕ СТИЛИ для чекбоксов и кнопки *** */
+    .intro-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    #intro-settings {
+      display: flex;
+      gap: 20px;
+      font-size: clamp(14px, 3vw, 18px);
+      font-weight: 500;
+    }
+    #intro-settings label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #intro-settings input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+    }
+    #startButton {
+      font-size: clamp(18px, 4vw, 24px);
+      font-weight: 600;
+      color: #000;
+      background-color: #eee;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    #startButton:hover {
+      background-color: #fff;
+    }
     .intro a { color: #dddddd; text-decoration: none; pointer-events: auto; opacity: 0.8; }
     .intro a:hover { text-decoration: underline; opacity: 1; }
-    @keyframes introPulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-    .introText { animation: introPulse 3.5s ease-in-out infinite; }
+    
     .centerOverlay {
       position: fixed;
       inset: 0;
@@ -140,7 +176,6 @@
     .shutters .bottom { bottom: 0; }
     .shutters.active .top { height: 50%; }
     .shutters.active .bottom { height: 50%; }
-    /* Layers for depth focusing */
     .layers {
       position: absolute;
       inset: 0;
@@ -161,7 +196,6 @@
     #layerBack { z-index: 10; }
     #layerMid { z-index: 20; }
     #layerFront { z-index: 30; }
-    /* Blur helpers for non-layer overlays */
     .focusViz { filter: blur(0px); opacity: 1; transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out; }
     .unfocusViz { filter: blur(7px); opacity: 0.85; transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out; }
     .hiddenSoft { opacity: 0 !important; animation: none !important; transition: opacity 3000ms ease-in-out !important; }
@@ -171,7 +205,20 @@
   <div id="app" aria-label="GLAZ тренажёр" role="application"></div>
   <div class="hud" id="hud"></div>
   <div class="muteBadge" id="mute">🔊 Звук включён</div>
-  <div class="intro" id="intro"><span class="introText">Подготовка...</span><br><small>Клик включает/выключает звук</small><small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small></div>
+  <div class="intro" id="intro">
+    <!-- *** ИЗМЕНЕНИЕ: Новая структура стартового экрана *** -->
+    <div class="intro-content">
+      <div id="intro-title" style="line-height: 1.1;">GLAZ<br><small style="font-size: clamp(14px, 3vw, 22px); opacity: 0.8;">Тренажёр для глаз</small></div>
+      <div id="intro-settings">
+          <label><input type="checkbox" id="modeSymbol" value="symbol" checked><span>Символы</span></label>
+          <label><input type="checkbox" id="modeTarget" value="target" checked><span>Мишень</span></label>
+          <label><input type="checkbox" id="modeWords" value="words" checked><span>Слова</span></label>
+      </div>
+      <button id="startButton">Старт</button>
+      <small>Циклы упражнений повторяются случайным образом</small>
+      <small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small>
+    </div>
+  </div>
   <div class="centerOverlay" id="center"></div>
   <div class="layers" id="layers">
     <div class="layer" id="layerBack"></div>
@@ -193,7 +240,7 @@
     let freezeTimer = null;
     let shutterTimer = null;
     let counterTimer = null;
-    let flickerTimer = null; // *** НОВАЯ ПЕРЕМЕННАЯ для таймера мерцания ***
+    let flickerTimer = null;
     let phaseEndAt = 0;
     let hasStarted = false;
     let currentDrawMs = 0;
@@ -216,9 +263,7 @@
         masterGain = audioCtx.createGain();
         masterGain.gain.value = 0.9;
         masterGain.connect(audioCtx.destination);
-      } catch (e) {
-        console.warn('Audio init failed', e);
-      }
+      } catch (e) { console.warn('Audio init failed', e); }
     }
 
     function setTheme(isDark) {
@@ -274,8 +319,6 @@
     function clearFreezeTimer() { if (freezeTimer) { clearTimeout(freezeTimer); freezeTimer = null; } }
     function clearShutterTimer() { if (shutterTimer) { clearTimeout(shutterTimer); shutterTimer = null; } }
     function clearCounterTimer() { if (counterTimer) { clearInterval(counterTimer); counterTimer = null; } }
-    
-    // *** НОВАЯ ФУНКЦИЯ ОЧИСТКИ ***
     function clearFlickerTimer() { if (flickerTimer) { clearTimeout(flickerTimer); flickerTimer = null; } }
 
     function clearFocusTimers() {
@@ -854,25 +897,30 @@
       currentDrawMs = showMs;
       phaseEndAt = performance.now() + showMs + 2000 + 2000;
       const intro = document.getElementById('intro');
-      if (intro) {
+      if (intro && !intro.classList.contains('hide')) {
         intro.classList.add('hide');
-        setTimeout(() => { if (intro && intro.parentNode) intro.parentNode.removeChild(intro); }, 600);
       }
       hasStarted = true;
       
-      // *** ИЗМЕНЕНИЕ: Планирование случайного мерцания ***
       clearFlickerTimer(); 
-      if (Math.random() < 0.20) { // 20% шанс на мерцание в этом цикле
+      if (Math.random() < 0.20) {
         const flickerAt = rand(1000, showMs - 2000); 
         flickerTimer = setTimeout(triggerGreenFlicker, flickerAt);
       }
 
-      const r = Math.random();
-      if (r < 0.1) {
+      // *** ИЗМЕНЕНИЕ: Логика выбора режима на основе чекбоксов ***
+      const availableModes = [];
+      if (document.getElementById('modeSymbol').checked) availableModes.push('symbol');
+      if (document.getElementById('modeTarget').checked) availableModes.push('target');
+      if (document.getElementById('modeWords').checked) availableModes.push('words');
+      
+      const selectedMode = availableModes[Math.floor(Math.random() * availableModes.length)];
+
+      if (selectedMode === 'target') {
         renderTargetMode(showMs);
-      } else if (r < 0.4) {
+      } else if (selectedMode === 'words') {
         renderWordsMode(showMs);
-      } else {
+      } else { // 'symbol' или если что-то пошло не так
         renderSymbolFor(showMs);
       }
     }
@@ -900,6 +948,7 @@
     }
 
     function toggleSound() {
+      if (!hasStarted) return; // Не реагируем на клики до старта циклов
       if (!audioCtx) {
         initAudio();
       } else if (audioCtx.state === 'suspended') {
@@ -945,10 +994,41 @@
       }
     });
 
+    // *** ИЗМЕНЕНИЕ: Логика инициализации стартового экрана ***
+    function initIntroScreen() {
+      const startButton = document.getElementById('startButton');
+      const checkboxes = [
+        document.getElementById('modeSymbol'),
+        document.getElementById('modeTarget'),
+        document.getElementById('modeWords')
+      ];
+
+      function validateCheckboxes() {
+        const checkedCheckboxes = checkboxes.filter(cb => cb.checked);
+        if (checkedCheckboxes.length === 1) {
+          checkedCheckboxes[0].disabled = true;
+        } else {
+          checkboxes.forEach(cb => cb.disabled = false);
+        }
+      }
+
+      checkboxes.forEach(cb => {
+        cb.addEventListener('change', validateCheckboxes);
+      });
+      
+      startButton.addEventListener('click', () => {
+        showSymbol();
+        // Первый клик для звука больше не нужен, т.к. пользователь уже взаимодействовал с кнопкой
+        if (!audioCtx) initAudio();
+      });
+
+      validateCheckboxes();
+    }
+
     updateHUD();
     setTheme(true);
-    setTimeout(showSymbol, 7000);
-    requestWakeLock();
+    initIntroScreen(); // Запускаем настройку экрана вместо таймера
+    
   })();
   </script>
 </body>
