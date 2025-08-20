@@ -539,7 +539,8 @@
         }
         
         const direction = pick(0.5) ? 1 : -1; 
-        const y = rand(0.2, 0.8) * vh;
+        // *** ИЗМЕНЕНИЕ: Все слова на одной линии по центру ***
+        const y = vh / 2;
         const x0 = vw / 2;
         const moveDistance = rand(vw * 0.1, vw * 0.25); 
         const x1 = vw / 2 + (moveDistance * direction);
@@ -965,10 +966,10 @@
       const center = document.getElementById('center');
       if (center) {
         center.innerHTML = `
-          <div>
+          <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
             <div class="title large pulse-large">Отдых...</div>
-            <small style="position: absolute; bottom: 30%; left: 0; right: 0; font-size: 16px; opacity: 0.7;">Нажмите для продолжения</small>
           </div>
+          <small style="position: absolute; bottom: 30%; left: 0; right: 0; font-size: 16px; opacity: 0.7;">Нажмите для продолжения</small>
         `;
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
