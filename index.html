@@ -639,11 +639,8 @@
       const midLayer = document.getElementById('layerMid');
       clearLayers();
       
-      // ***ИЗМЕНЕНИЕ: Очищаем центральный оверлей, чтобы скрыть таймер***
       const center = document.getElementById('center');
-      if (center) {
-        center.innerHTML = '';
-      }
+      if (center) { center.innerHTML = ''; }
       
       const svgNS = 'http://www.w3.org/2000/svg';
       const svg = document.createElementNS(svgNS, 'svg');
@@ -656,48 +653,76 @@
         layersRoot.style.opacity = '0';
         requestAnimationFrame(() => { layersRoot.style.opacity = '1'; });
       }
-
-      const stepDuration = 3500;
-      const numSteps = Math.max(2, Math.floor(durationMs / stepDuration));
-      const initialRadius = Math.min(vw, vh) * 0.45;
-      const finalRadius = 4;
-      const strokeColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
-      let previousCircle = null;
-      const allTimers = [];
-
-      for (let i = 0; i < numSteps; i++) {
-        const timerId = setTimeout(() => {
-          if (previousCircle) {
-            previousCircle.style.transition = 'filter 1500ms ease-in-out, stroke-opacity 1500ms ease-in-out';
-            previousCircle.style.filter = 'blur(7px)';
-            previousCircle.style.strokeOpacity = '0.5';
-          }
-
-          const p = i / (numSteps - 1);
-          const currentRadius = initialRadius * (1 - p) + finalRadius * p;
-          const strokeWidth = Math.max(2, 20 * (1 - p));
-
-          const circle = document.createElementNS(svgNS, 'circle');
-          circle.setAttribute('cx', cx.toFixed(1));
-          circle.setAttribute('cy', cy.toFixed(1));
-          circle.setAttribute('r', currentRadius.toFixed(1));
-          circle.setAttribute('stroke', strokeColor);
-          circle.setAttribute('stroke-width', strokeWidth.toFixed(2));
-          circle.setAttribute('fill', 'none');
-          
-          svg.appendChild(circle);
-          
-          applyDrawAnimation(circle, stepDuration * 0.8, 100);
-
-          previousCircle = circle;
-
-        }, i * stepDuration);
-        allTimers.push(timerId);
-      }
       
+      const strokeColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
+      const allTimers = [];
       window._focusTimers = allTimers;
+      
+      const circles = [];
+      let lastRadius = Math.min(vw, vh) * 0.45;
+      let lastStrokeWidth = Math.max(4, lastRadius * 0.1);
 
-      // ***ИЗМЕНЕНИЕ: Весь блок создания и управления таймером удален отсюда***
+      // Рассчитываем все круги заранее
+      const maxSteps = 15; // Ограничение на всякий случай
+      for (let i = 0; i < maxSteps; i++) {
+          if (i === 0) {
+              circles.push({ radius: lastRadius, strokeWidth: lastStrokeWidth });
+          } else {
+              const gap = lastStrokeWidth; 
+              const newOuterEdge = (lastRadius - lastStrokeWidth / 2) - gap;
+              if (newOuterEdge < 4) break; 
+
+              const newStrokeWidth = Math.max(2, newOuterEdge * 0.1);
+              const newRadius = newOuterEdge - newStrokeWidth / 2;
+              if (newRadius < 2) break;
+
+              circles.push({ radius: newRadius, strokeWidth: newStrokeWidth });
+              lastRadius = newRadius;
+              lastStrokeWidth = newStrokeWidth;
+          }
+      }
+
+      // *** ИСПРАВЛЕНИЕ: Новая последовательная (chained) логика анимации ***
+      function processCircle(index) {
+        if (index >= circles.length) return; // Все круги нарисованы
+
+        const circleData = circles[index];
+        const drawDuration = 2800;
+        const blurDuration = 1500;
+        const pauseBeforeBlur = 1000;
+
+        // 1. Рисуем текущий круг
+        const currentCircleEl = document.createElementNS(svgNS, 'circle');
+        currentCircleEl.setAttribute('cx', cx.toFixed(1));
+        currentCircleEl.setAttribute('cy', cy.toFixed(1));
+        currentCircleEl.setAttribute('r', circleData.radius.toFixed(1));
+        currentCircleEl.setAttribute('stroke', strokeColor);
+        currentCircleEl.setAttribute('stroke-width', circleData.strokeWidth.toFixed(2));
+        currentCircleEl.setAttribute('fill', 'none');
+        svg.appendChild(currentCircleEl);
+        applyDrawAnimation(currentCircleEl, drawDuration, 100);
+
+        // 2. Если это не последний круг, планируем его размытие и вызов следующего
+        if (index < circles.length - 1) {
+          // 3. Таймер для начала размытия (после отрисовки + пауза)
+          const blurStartTimer = setTimeout(() => {
+            currentCircleEl.style.transition = `filter ${blurDuration}ms ease-in-out, stroke-opacity ${blurDuration}ms ease-in-out`;
+            currentCircleEl.style.filter = 'blur(7px)';
+            currentCircleEl.style.strokeOpacity = '0.5';
+
+            // 4. Таймер для вызова следующего круга (после завершения размытия)
+            const nextCircleTimer = setTimeout(() => {
+              processCircle(index + 1);
+            }, blurDuration); // Ждем окончания анимации размытия
+            allTimers.push(nextCircleTimer);
+
+          }, drawDuration + pauseBeforeBlur);
+          allTimers.push(blurStartTimer);
+        }
+      }
+
+      // Запускаем цепочку
+      processCircle(0);
 
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
