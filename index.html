@@ -43,10 +43,19 @@
       will-change: transform;
       display: grid;
       place-items: center;
-      pointer-events: none; /* клики проходят сквозь */
+      pointer-events: none;
     }
     .symbolWrapper.hidden { display: none; }
     .symbolWrapper svg { shape-rendering: geometricPrecision; }
+    .target-circle {
+      transition: filter 2000ms ease-in-out, opacity 2000ms ease-in-out;
+      filter: blur(7px);
+      opacity: 0.5;
+    }
+    .target-circle.focus {
+      filter: blur(0px);
+      opacity: 1;
+    }
     .hud {
       position: fixed;
       left: 10px; bottom: 10px;
@@ -75,7 +84,7 @@
       display: grid;
       place-items: center;
       z-index: 1000;
-      pointer-events: auto; /* *** ИЗМЕНЕНИЕ: Включаем взаимодействие *** */
+      pointer-events: auto;
       color: #ffffff;
       background: #000000;
       font-weight: 700;
@@ -83,10 +92,10 @@
       line-height: 1.1;
       letter-spacing: 0.02em;
       text-align: center;
-      opacity: 1; /* *** ИЗМЕНЕНИЕ: Делаем непрозрачным по умолчанию *** */
+      opacity: 1;
       transition: opacity .5s ease;
     }
-    .intro.hide { opacity: 0; pointer-events: none; /* *** ИЗМЕНЕНИЕ: Отключаем взаимодействие после скрытия *** */ }
+    .intro.hide { opacity: 0; pointer-events: none; }
     .intro small {
       display: block;
       margin-top: 12px;
@@ -94,7 +103,6 @@
       font-size: clamp(12px, 2.5vw, 16px);
       opacity: 0.7;
     }
-    /* *** НОВЫЕ СТИЛИ для чекбоксов и кнопки *** */
     .intro-content {
       display: flex;
       flex-direction: column;
@@ -147,17 +155,11 @@
     .centerOverlay .title.small { font-size: clamp(14px, 2.6vw, 20px); font-weight: 600; opacity: 0.85; }
     .centerOverlay .title.large { font-size: clamp(28px, 6vw, 72px); font-weight: 700; opacity: 0.28; letter-spacing: 0.02em; }
     .centerOverlay .counter { margin-top: 8px; font-size: clamp(48px, 10vw, 160px); font-weight: 800; line-height: 1.0; }
-    @keyframes pulseSmall {
-      0% { opacity: 0.65; }
-      50% { opacity: 0.95; }
-      100% { opacity: 0.65; }
-    }
     @keyframes pulseLarge {
       0% { opacity: 0.22; }
       50% { opacity: 0.36; }
       100% { opacity: 0.22; }
     }
-    .centerOverlay .pulse-small { animation: pulseSmall 4.5s ease-in-out infinite; }
     .centerOverlay .pulse-large { animation: pulseLarge 5.5s ease-in-out infinite; }
     .shutters {
       position: fixed;
@@ -206,7 +208,6 @@
   <div class="hud" id="hud"></div>
   <div class="muteBadge" id="mute">🔊 Звук включён</div>
   <div class="intro" id="intro">
-    <!-- *** ИЗМЕНЕНИЕ: Новая структура стартового экрана *** -->
     <div class="intro-content">
       <div id="intro-title" style="line-height: 1.1;">GLAZ<br><small style="font-size: clamp(14px, 3vw, 22px); opacity: 0.8;">Тренажёр для глаз</small></div>
       <div id="intro-settings">
@@ -215,7 +216,7 @@
           <label><input type="checkbox" id="modeWords" value="words" checked><span>Слова</span></label>
       </div>
       <button id="startButton">Старт</button>
-      <small>Циклы упражнений повторяются случайным образом</small>
+      <small>Клик в любом месте во время цикла включает/выключает звук</small>
       <small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small>
     </div>
   </div>
@@ -249,8 +250,6 @@
 
     let phase = 'pause';
     let symbolWrapper = null;
-
-    const SHOW_MS = 7000;
 
     function rand(min, max) { return Math.random() * (max - min) + min; }
     function randInt(min, max) { return Math.floor(rand(min, max)); }
@@ -324,6 +323,7 @@
     function clearFocusTimers() {
       if (window._focusTimers && Array.isArray(window._focusTimers)) {
         window._focusTimers.forEach(t => clearTimeout(t));
+        window._focusTimers.forEach(t => clearInterval(t));
       }
       window._focusTimers = [];
     }
@@ -372,6 +372,11 @@
           requestAnimationFrame(() => {
             if (!el.isConnected) return;
             el.style.strokeDashoffset = '0';
+            setTimeout(() => {
+                if (el.isConnected) {
+                    el.style.transition = '';
+                }
+            }, durMs + delMs);
           });
         });
       } catch (e) {}
@@ -612,31 +617,35 @@
       if (center) {
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
-        const startCount = Math.max(1, Math.ceil(durationMs / 1000));
-        center.innerHTML = `<div><div class=\"title small pulse-small hiddenSoft\" id=\"visionTitle\"> </div><div class=\"counter\" id=\"drawCounter\">${startCount}</div></div>`;
+        // *** ИСПРАВЛЕНИЕ: Убираем надпись ***
+        center.innerHTML = `<div><div class="counter" id="drawCounter">1</div></div>`;
       }
       const counterEl = document.getElementById('drawCounter');
-      const titleEl = document.getElementById('visionTitle');
       if (counterEl) {
-        let remainingSec = Math.max(1, Math.ceil(durationMs / 1000));
-        counterEl.textContent = String(remainingSec);
-        counterEl.style.transition = 'opacity 3000ms ease-in-out';
-        if (titleEl) titleEl.style.transition = 'opacity 3000ms ease-in-out';
+        let elapsedSec = 0;
+        const totalSec = Math.ceil(durationMs / 1000);
+        counterEl.textContent = '1';
+        
         counterTimer = setInterval(() => {
-          remainingSec -= 1;
-          if (remainingSec <= 0) {
+          elapsedSec++;
+          if (elapsedSec >= totalSec) {
             clearCounterTimer();
-            counterEl.textContent = '0';
           } else {
-            counterEl.textContent = String(remainingSec);
+            counterEl.textContent = String(elapsedSec + 1);
           }
         }, 1000);
         
         const visTimers = [];
-        setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, 0);
-        visTimers.push(setTimeout(() => { counterEl.style.opacity = '0'; if (titleEl) titleEl.classList.add('hiddenSoft'); }, 10000));
+        setTimeout(() => { 
+            if(counterEl) counterEl.classList.remove('hiddenSoft');
+        }, 0);
+        visTimers.push(setTimeout(() => { 
+            if(counterEl) counterEl.classList.add('hiddenSoft');
+        }, 10000));
         if (durationMs > 7000) {
-          visTimers.push(setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, Math.max(0, durationMs - 7000)));
+          visTimers.push(setTimeout(() => { 
+            if(counterEl) counterEl.classList.remove('hiddenSoft');
+          }, Math.max(0, durationMs - 7000)));
         }
         window._counterVisTimers = visTimers;
       }
@@ -683,14 +692,14 @@
       const allTimers = [];
       window._focusTimers = allTimers;
       
-      const circles = [];
+      const circlesData = [];
       let lastRadius = Math.min(vw, vh) * 0.45;
       let lastStrokeWidth = Math.max(4, lastRadius * 0.1);
 
       const maxSteps = 15;
       for (let i = 0; i < maxSteps; i++) {
           if (i === 0) {
-              circles.push({ radius: lastRadius, strokeWidth: lastStrokeWidth });
+              circlesData.push({ radius: lastRadius, strokeWidth: lastStrokeWidth });
           } else {
               const gap = lastStrokeWidth; 
               const newOuterEdge = (lastRadius - lastStrokeWidth / 2) - gap;
@@ -700,55 +709,65 @@
               const newRadius = newOuterEdge - newStrokeWidth / 2;
               if (newRadius < 5) break;
 
-              circles.push({ radius: newRadius, strokeWidth: newStrokeWidth });
+              circlesData.push({ radius: newRadius, strokeWidth: newStrokeWidth });
               lastRadius = newRadius;
               lastStrokeWidth = newStrokeWidth;
           }
       }
       
-      circles.push({ radius: 2, isDot: true });
+      const drawnCircleElements = [];
+      const drawInterval = 2000;
 
-      function processCircle(index) {
-        if (index >= circles.length) return;
+      circlesData.forEach((circleData, i) => {
+        const drawTimer = setTimeout(() => {
+          const circleEl = document.createElementNS(svgNS, 'circle');
+          circleEl.setAttribute('cx', cx.toFixed(1));
+          circleEl.setAttribute('cy', cy.toFixed(1));
+          circleEl.setAttribute('r', circleData.radius.toFixed(1));
+          circleEl.setAttribute('stroke', strokeColor);
+          circleEl.setAttribute('stroke-width', circleData.strokeWidth.toFixed(2));
+          circleEl.setAttribute('fill', 'none');
+          circleEl.classList.add('target-circle');
 
-        const circleData = circles[index];
-        const drawDuration = 2800;
-        const blurDuration = 1500;
-        const pauseBeforeBlur = 1000;
-
-        const currentCircleEl = document.createElementNS(svgNS, 'circle');
-        currentCircleEl.setAttribute('cx', cx.toFixed(1));
-        currentCircleEl.setAttribute('cy', cy.toFixed(1));
-        currentCircleEl.setAttribute('r', circleData.radius.toFixed(1));
+          svg.appendChild(circleEl);
+          applyDrawAnimation(circleEl, drawInterval * 0.9, 0);
+          drawnCircleElements.push(circleEl);
+        }, i * drawInterval);
+        allTimers.push(drawTimer);
+      });
+      
+      const focusInterval = setInterval(() => {
+        if (drawnCircleElements.length === 0) return;
         
-        if (circleData.isDot) {
-            currentCircleEl.setAttribute('fill', strokeColor);
-            svg.appendChild(currentCircleEl);
-        } else {
-            currentCircleEl.setAttribute('stroke', strokeColor);
-            currentCircleEl.setAttribute('stroke-width', circleData.strokeWidth.toFixed(2));
-            currentCircleEl.setAttribute('fill', 'none');
-            svg.appendChild(currentCircleEl);
-            applyDrawAnimation(currentCircleEl, drawDuration, 100);
-        }
+        let focusedIndex = -1;
+        const currentlyFocused = drawnCircleElements.findIndex(el => el.classList.contains('focus'));
+        do {
+            focusedIndex = randInt(0, drawnCircleElements.length);
+        } while (drawnCircleElements.length > 1 && focusedIndex === currentlyFocused);
+        
+        drawnCircleElements.forEach((el, i) => {
+          el.classList.toggle('focus', i === focusedIndex);
+        });
+      }, 3000);
+      allTimers.push(focusInterval);
 
-        if (!circleData.isDot) {
-          const blurStartTimer = setTimeout(() => {
-            currentCircleEl.style.transition = `filter ${blurDuration}ms ease-in-out, stroke-opacity ${blurDuration}ms ease-in-out`;
-            currentCircleEl.style.filter = 'blur(7px)';
-            currentCircleEl.style.strokeOpacity = '0.5';
+      const finalFocusTimer = setTimeout(() => {
+        clearInterval(focusInterval);
 
-            const nextCircleTimer = setTimeout(() => {
-              processCircle(index + 1);
-            }, blurDuration);
-            allTimers.push(nextCircleTimer);
+        drawnCircleElements.forEach(el => {
+          el.classList.remove('focus');
+        });
 
-          }, drawDuration + pauseBeforeBlur);
-          allTimers.push(blurStartTimer);
-        }
-      }
+        const finalDot = document.createElementNS(svgNS, 'circle');
+        finalDot.setAttribute('cx', cx.toFixed(1));
+        finalDot.setAttribute('cy', cy.toFixed(1));
+        finalDot.setAttribute('r', '3');
+        finalDot.setAttribute('fill', strokeColor);
+        svg.appendChild(finalDot);
 
-      processCircle(0);
+      }, durationMs);
+      allTimers.push(finalFocusTimer);
+
 
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
@@ -851,31 +870,34 @@
       if (center) {
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
-        const startCount = Math.max(1, Math.ceil(durationMs / 1000));
-        center.innerHTML = `<div><div class=\"title small pulse-small hiddenSoft\" id=\"visionTitle\"> </div><div class=\"counter\" id=\"drawCounter\">${startCount}</div></div>`;
+        center.innerHTML = `<div><div class="counter" id="drawCounter">1</div></div>`;
       }
       const counterEl = document.getElementById('drawCounter');
-      const titleEl = document.getElementById('visionTitle');
       if (counterEl) {
-        let remainingSec = Math.max(1, Math.ceil(durationMs / 1000));
-        counterEl.textContent = String(remainingSec);
-        counterEl.style.transition = 'opacity 3000ms ease-in-out';
-        if (titleEl) titleEl.style.transition = 'opacity 3000ms ease-in-out';
+        let elapsedSec = 0;
+        const totalSec = Math.ceil(durationMs / 1000);
+        counterEl.textContent = '1';
+        
         counterTimer = setInterval(() => {
-          remainingSec -= 1;
-          if (remainingSec <= 0) {
+          elapsedSec++;
+          if (elapsedSec >= totalSec) {
             clearCounterTimer();
-            counterEl.textContent = '0';
           } else {
-            counterEl.textContent = String(remainingSec);
+            counterEl.textContent = String(elapsedSec + 1);
           }
         }, 1000);
         
         const visTimers = [];
-        setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, 0);
-        visTimers.push(setTimeout(() => { counterEl.style.opacity = '0'; if (titleEl) titleEl.classList.add('hiddenSoft'); }, 10000));
+        setTimeout(() => { 
+            if(counterEl) counterEl.classList.remove('hiddenSoft');
+        }, 0);
+        visTimers.push(setTimeout(() => { 
+            if(counterEl) counterEl.classList.add('hiddenSoft');
+        }, 10000));
         if (durationMs > 7000) {
-          visTimers.push(setTimeout(() => { counterEl.style.opacity = '1'; if (titleEl) titleEl.classList.remove('hiddenSoft'); }, Math.max(0, durationMs - 7000)));
+          visTimers.push(setTimeout(() => { 
+            if(counterEl) counterEl.classList.remove('hiddenSoft');
+          }, Math.max(0, durationMs - 7000)));
         }
         window._counterVisTimers = visTimers;
       }
@@ -908,7 +930,6 @@
         flickerTimer = setTimeout(triggerGreenFlicker, flickerAt);
       }
 
-      // *** ИЗМЕНЕНИЕ: Логика выбора режима на основе чекбоксов ***
       const availableModes = [];
       if (document.getElementById('modeSymbol').checked) availableModes.push('symbol');
       if (document.getElementById('modeTarget').checked) availableModes.push('target');
@@ -920,7 +941,7 @@
         renderTargetMode(showMs);
       } else if (selectedMode === 'words') {
         renderWordsMode(showMs);
-      } else { // 'symbol' или если что-то пошло не так
+      } else {
         renderSymbolFor(showMs);
       }
     }
@@ -948,7 +969,7 @@
     }
 
     function toggleSound() {
-      if (!hasStarted) return; // Не реагируем на клики до старта циклов
+      if (!hasStarted) return;
       if (!audioCtx) {
         initAudio();
       } else if (audioCtx.state === 'suspended') {
@@ -994,7 +1015,6 @@
       }
     });
 
-    // *** ИЗМЕНЕНИЕ: Логика инициализации стартового экрана ***
     function initIntroScreen() {
       const startButton = document.getElementById('startButton');
       const checkboxes = [
@@ -1018,7 +1038,6 @@
       
       startButton.addEventListener('click', () => {
         showSymbol();
-        // Первый клик для звука больше не нужен, т.к. пользователь уже взаимодействовал с кнопкой
         if (!audioCtx) initAudio();
       });
 
@@ -1027,7 +1046,7 @@
 
     updateHUD();
     setTheme(true);
-    initIntroScreen(); // Запускаем настройку экрана вместо таймера
+    initIntroScreen();
     
   })();
   </script>
