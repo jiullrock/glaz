@@ -27,6 +27,17 @@
       place-items: center;
       transition: background-color 250ms ease;
     }
+    @keyframes flickerAnimation {
+      0% { background-color: var(--bg); }
+      20% { background-color: #004d00; }
+      40% { background-color: var(--bg); }
+      60% { background-color: #005a00; }
+      80% { background-color: #004d00; }
+      100% { background-color: var(--bg); }
+    }
+    #app.green-flicker {
+      animation: flickerAnimation 1000ms ease-in-out;
+    }
     .symbolWrapper {
       position: absolute;
       will-change: transform;
@@ -288,6 +299,15 @@
       });
     }
 
+    function triggerGreenFlicker() {
+        const app = document.getElementById('app');
+        if (!app) return;
+        app.classList.add('green-flicker');
+        setTimeout(() => {
+            app.classList.remove('green-flicker');
+        }, 1000);
+    }
+
     function applyDrawAnimation(el, durationMs, delayMs) {
       try {
         const length = el.getTotalLength();
@@ -296,7 +316,6 @@
         el.style.strokeDashoffset = lenStr;
         const durMs = Math.max(300, Math.floor(durationMs || 1000));
         const delMs = Math.max(0, Math.floor(delayMs || 0));
-        // старт без transition, чтобы избежать мгновенного перехода
         el.style.transition = 'none';
         el.style.willChange = 'stroke-dashoffset';
         void el.getBoundingClientRect();
@@ -311,7 +330,6 @@
           });
         });
       } catch (e) {
-        // элемент может не поддерживать getTotalLength
       }
     }
 
@@ -334,20 +352,18 @@
       svg.setAttribute('viewBox', '0 0 1000 1000');
       svg.setAttribute('aria-label', 'неизвестный символ');
 
-      // Фон прозрачный, рисуем «незнакомый» знак: смесь линий, дуг и пятен
       const g = document.createElementNS(svgNS, 'g');
       g.setAttribute('fill', 'none');
       g.setAttribute('stroke', strokeColor);
       g.setAttribute('stroke-linecap', 'round');
       g.setAttribute('stroke-linejoin', 'round');
 
-      // Случайные параметры штрихов
-      const base = rand(10, 26); // базовая толщина
+      const base = rand(10, 26);
       const strokes = randInt(6, 13);
 
       for (let i = 0; i < strokes; i++) {
         const path = document.createElementNS(svgNS, 'path');
-        const cx = rand(180, 820); // центр сегмента
+        const cx = rand(180, 820);
         const cy = rand(180, 820);
         const r1 = rand(60, 360);
         const r2 = rand(60, 360);
@@ -365,14 +381,13 @@
         g.appendChild(path);
       }
 
-      // Несколько «пятен» для загадочности
       const blobs = randInt(1, 4);
       for (let i = 0; i < blobs; i++) {
         const path = document.createElementNS(svgNS, 'path');
         const cx = rand(200, 800);
         const cy = rand(200, 800);
         const r = rand(40, 180);
-        const k = 0.5522847498; // приблизительно для кривых Безье круга
+        const k = 0.5522847498;
         const ox = r * k * rand(0.7, 1.3);
         const oy = r * k * rand(0.7, 1.3);
         const strokeW = base * rand(0.9, 1.6);
@@ -389,7 +404,6 @@
         g.appendChild(path);
       }
 
-      // редкая «штриховка»
       if (pick(0.35)) {
         const lines = randInt(6, 14);
         for (let i = 0; i < lines; i++) {
@@ -417,19 +431,16 @@
       return svg;
     }
 
-    // Генерация слова из перемешанных букв трёх алфавитов
     function mixedLangWord() {
       const ru = 'абвгдеёжзийклмнопрстуфхцчшщьыъэюя';
       const en = 'abcdefghijklmnopqrstuvwxyz';
       const cn = '的一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政四日那社义事平形相全表间样与关各重新线内数正心反你明看原又么利比或但质气第向道命此变条只没结解问意建月公无系军很情者最立代想已通并提直题党程展五果料象员革位入常文总次品式活设及管特件长求老头基资边流路级少图山统接知较将组见计别她手角期根论运农指几九区强放决西被干做必战先回则任取据处队南给色光门即保治北造百规热领七海口东导器压志世金增争济阶油思术极交受联什认六共权收证改清己美再采转单风切打白教速花带安场身车例真务具万每目至达走积示议声报斗完类八离华名确才科张信马节话米整空元况今集温传土许步群广石记需段研界拉林律叫且究观越织装影算低持音众书布复容儿须际商非验连断深难近矿千周委素技备半办青省列习响约支般史感劳便团往酸历市克何除消构府称太准精值号率族维划选标写存候毛亲快效斯院查江型眼王按格养易置派层片始却专状育厂京识适属圆包火住调满县局照参红细备绿权码';
-      // по одной букве из каждого алфавита, затем перемешать
       let arr = [];
       for (let i = 0; i < randInt(4, 8); i++) {
         arr.push(ru[randInt(0, ru.length)]);
         arr.push(en[randInt(0, en.length)]);
         arr.push(cn[randInt(0, cn.length)]);
       }
-      // перемешать
       for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -437,7 +448,7 @@
       return arr.slice(0, randInt(4, 10)).join('');
     }
 
-    // Новый режим: слова летят к нам или от нас
+    // Новый режим: слова
     function renderWordsMode(durationMs) {
       const startTime = performance.now();
       clearPhaseTimer();
@@ -462,26 +473,29 @@
         layersRoot.style.transition = 'opacity 800ms ease';
       }
       requestAnimationFrame(() => { if (layersRoot) layersRoot.style.opacity = '1'; });
-      // параметры
+      
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
-      // Удалить все старые canvas из слоёв
+      
       [back, mid, front].forEach(el => {
-        if (el) {
-          Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove());
-        }
+        if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
       });
-      // canvas для каждого слоя
+      
+      // *** ИСПРАВЛЕНИЕ: Функция создания Canvas теперь учитывает devicePixelRatio ***
       function createLayerCanvas(parent) {
+        const dpr = window.devicePixelRatio || 1;
         const c = document.createElement('canvas');
-        c.width = vw;
-        c.height = vh;
+        c.width = vw * dpr;
+        c.height = vh * dpr;
         c.style.position = 'absolute';
         c.style.left = '0';
         c.style.top = '0';
-        c.style.width = '100%';
-        c.style.height = '100%';
+        c.style.width = `${vw}px`;
+        c.style.height = `${vh}px`;
         parent.appendChild(c);
+        
+        const ctx = c.getContext('2d');
+        ctx.scale(dpr, dpr); // Масштабируем контекст для рисования в высоком разрешении
         return c;
       }
       const canvBack = createLayerCanvas(back);
@@ -493,7 +507,7 @@
       for (let i = 0; i < nWords; i++) {
         const word = mixedLangWord();
         let fontSize;
-        if (i === nWords - 1) { // последнее слово будет очень мелким
+        if (i === nWords - 1) {
             fontSize = rand(14, 22);
         } else {
             fontSize = rand(48, 120);
@@ -548,7 +562,12 @@
       
       let running = true;
       function drawWords(ctx, words, now) {
-        ctx.clearRect(0, 0, vw, vh);
+        // Очищаем с учетом масштаба dpr
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.restore();
+
         words.forEach(w => {
           const p = Math.min(1, (now - w.t0) / w.duration);
           const x = w.x0 + (w.x1 - w.x0) * p;
@@ -669,7 +688,7 @@
           } else {
               const gap = lastStrokeWidth; 
               const newOuterEdge = (lastRadius - lastStrokeWidth / 2) - gap;
-              if (newOuterEdge < 10) break; // Оставляем место для финальной точки
+              if (newOuterEdge < 10) break;
 
               const newStrokeWidth = Math.max(2, newOuterEdge * 0.1);
               const newRadius = newOuterEdge - newStrokeWidth / 2;
@@ -681,7 +700,6 @@
           }
       }
       
-      // *** ИСПРАВЛЕНИЕ: Последний элемент всегда будет точкой ***
       circles.push({ radius: 2, isDot: true });
 
       function processCircle(index) {
@@ -884,7 +902,7 @@
       phase = 'symbol';
       const showMs = randInt(90000, 120001);
       currentDrawMs = showMs;
-      phaseEndAt = performance.now() + showMs + 2000 + 2000; // draw + freeze + shutters
+      phaseEndAt = performance.now() + showMs + 2000 + 2000;
       const intro = document.getElementById('intro');
       if (intro) {
         intro.classList.add('hide');
@@ -892,12 +910,16 @@
       }
       hasStarted = true;
       
+      if (Math.random() < 0.15) {
+        setTimeout(triggerGreenFlicker, 500);
+      }
+
       const r = Math.random();
-      if (r < 0.3) { // 30% шанс на режим мишени
+      if (r < 0.3) {
         renderTargetMode(showMs);
-      } else if (r < 0.6) { // 30% шанс на режим слов
+      } else if (r < 0.6) {
         renderWordsMode(showMs);
-      } else { // 40% на режим символов
+      } else {
         renderSymbolFor(showMs);
       }
     }
@@ -906,7 +928,7 @@
       phase = 'pause';
       updateHUD();
       stopTicking();
-      setTheme(true); // экран паузы всегда белый
+      setTheme(true);
       clearSymbol();
       clearLayers();
       clearPhaseTimer();
@@ -936,7 +958,7 @@
     }
 
     window.addEventListener('click', toggleSound);
-    window.addEventListener('touchstart', function(e){ /* быстрый отклик на мобилках */ }, {passive:true});
+    window.addEventListener('touchstart', function(e){}, {passive:true});
 
     window.addEventListener('resize', () => {
       clearTimeout(resizeRaf);
@@ -944,7 +966,7 @@
         if (phase === 'symbol') {
           const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
           phaseEndAt = performance.now() + remaining;
-          showSymbol(); // Перезапускаем текущий режим с оставшимся временем
+          showSymbol();
         }
       }, 120);
     });
@@ -954,10 +976,9 @@
       try {
         if ('wakeLock' in navigator) {
           wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => { /* released */ });
+          wakeLock.addEventListener('release', () => {});
         }
       } catch (e) {
-        // недоступно или отклонено
       }
     }
 
@@ -967,7 +988,7 @@
         if (phase === 'symbol') {
           const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
           phaseEndAt = performance.now() + remaining;
-          showSymbol(); // Перезапускаем текущий режим с оставшимся временем
+          showSymbol();
         }
       }
     });
