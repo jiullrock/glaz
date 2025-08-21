@@ -672,82 +672,73 @@
 
       const maxSteps = 15;
       for (let i = 0; i < maxSteps; i++) {
-          if (i === 0) {
-              circlesData.push({ radius: lastRadius, strokeWidth: lastStrokeWidth });
-          } else {
-              const gap = lastStrokeWidth; 
-              const newOuterEdge = (lastRadius - lastStrokeWidth / 2) - gap;
-              if (newOuterEdge < 10) break;
+        if (i === 0) {
+          circlesData.push({ radius: lastRadius, strokeWidth: lastStrokeWidth });
+        } else {
+          const gap = lastStrokeWidth; 
+          const newOuterEdge = (lastRadius - lastStrokeWidth / 2) - gap;
+          if (newOuterEdge < 10) break;
 
-              const newStrokeWidth = Math.max(2, newOuterEdge * 0.1);
-              const newRadius = newOuterEdge - newStrokeWidth / 2;
-              if (newRadius < 5) break;
+          const newStrokeWidth = Math.max(2, newOuterEdge * 0.1);
+          const newRadius = newOuterEdge - newStrokeWidth / 2;
+          if (newRadius < 5) break;
 
-              circlesData.push({ radius: newRadius, strokeWidth: newStrokeWidth });
-              lastRadius = newRadius;
-              lastStrokeWidth = newStrokeWidth;
-          }
+          circlesData.push({ radius: newRadius, strokeWidth: newStrokeWidth });
+          lastRadius = newRadius;
+          lastStrokeWidth = newStrokeWidth;
+        }
       }
       
-      const drawnCircleElements = [];
-      const stepInterval = 3000;
+      const focusableElements = [];
+      
+      // 1. Создаём все круги, изначально размытые
+      circlesData.forEach(data => {
+        const circleEl = document.createElementNS(svgNS, 'circle');
+        circleEl.setAttribute('cx', cx.toFixed(1));
+        circleEl.setAttribute('cy', cy.toFixed(1));
+        circleEl.setAttribute('r', data.radius.toFixed(1));
+        circleEl.setAttribute('stroke', strokeColor);
+        circleEl.setAttribute('stroke-width', data.strokeWidth.toFixed(2));
+        circleEl.setAttribute('fill', 'none');
+        circleEl.classList.add('target-circle');
+        svg.appendChild(circleEl);
+        focusableElements.push(circleEl);
+      });
 
-      function processCircleStep(index) {
-          if (index >= circlesData.length) {
-              const finalFocusTimer = setTimeout(() => {
-                  if (drawnCircleElements.length > 0) {
-                      drawnCircleElements[drawnCircleElements.length - 1].classList.remove('focus');
-                  }
-                  const finalDot = document.createElementNS(svgNS, 'circle');
-                  finalDot.setAttribute('cx', cx.toFixed(1));
-                  finalDot.setAttribute('cy', cy.toFixed(1));
-                  finalDot.setAttribute('r', '3');
-                  finalDot.setAttribute('fill', strokeColor);
-                  svg.appendChild(finalDot);
-              }, stepInterval);
-              allTimers.push(finalFocusTimer);
-              return;
+      // 2. Создаём финальную точку, также размытую
+      const finalDot = document.createElementNS(svgNS, 'circle');
+      finalDot.setAttribute('cx', cx.toFixed(1));
+      finalDot.setAttribute('cy', cy.toFixed(1));
+      finalDot.setAttribute('r', '3');
+      finalDot.setAttribute('fill', strokeColor);
+      finalDot.classList.add('target-circle'); // Точка тоже подчиняется логике фокуса
+      svg.appendChild(finalDot);
+      focusableElements.push(finalDot);
+
+      const FOCUS_SHIFT_INTERVAL = 5000; // 5 секунд на смену фокуса
+
+      // 3. Запускаем последовательную смену фокуса
+      focusableElements.forEach((element, index) => {
+        const focusTimer = setTimeout(() => {
+          if (index > 0) {
+            focusableElements[index - 1].classList.remove('focus');
           }
+          element.classList.add('focus');
+        }, index * FOCUS_SHIFT_INTERVAL);
+        allTimers.push(focusTimer);
+      });
 
-          const circleData = circlesData[index];
-          const circleEl = document.createElementNS(svgNS, 'circle');
-          circleEl.setAttribute('cx', cx.toFixed(1));
-          circleEl.setAttribute('cy', cy.toFixed(1));
-          circleEl.setAttribute('r', circleData.radius.toFixed(1));
-          circleEl.setAttribute('stroke', strokeColor);
-          circleEl.setAttribute('stroke-width', circleData.strokeWidth.toFixed(2));
-          circleEl.setAttribute('fill', 'none');
-          circleEl.classList.add('target-circle');
-          svg.appendChild(circleEl);
-          
-          applyDrawAnimation(circleEl, stepInterval * 0.8, 0);
-          drawnCircleElements.push(circleEl);
-
-          setTimeout(() => {
-              if (index > 0) {
-                  drawnCircleElements[index - 1].classList.remove('focus');
-              }
-              circleEl.classList.add('focus');
-          }, 50);
-
-          const nextStepTimer = setTimeout(() => {
-              processCircleStep(index + 1);
-          }, stepInterval);
-          allTimers.push(nextStepTimer);
-      }
-
-      processCircleStep(0);
-
-
+      // 4. Обновляем таймеры завершения фазы
+      const totalDuration = focusableElements.length * FOCUS_SHIFT_INTERVAL;
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
       const doFreeze = () => {
         stopTicking();
         clearFocusTimers();
       };
-      freezeTimer = setTimeout(doFreeze, Math.max(0, durationMs));
-      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
-      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+      freezeTimer = setTimeout(doFreeze, Math.max(0, totalDuration));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, totalDuration + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, totalDuration + freezeLead + 2000));
     }
 
 
