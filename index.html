@@ -214,6 +214,7 @@
           <label><input type="checkbox" id="modeSymbol" value="symbol" checked><span>Символы</span></label>
           <label><input type="checkbox" id="modeTarget" value="target" checked><span>Мишень</span></label>
           <label><input type="checkbox" id="modeWords" value="words" checked><span>Слова</span></label>
+          <label><input type="checkbox" id="modeNoise" value="noise" checked><span>Шум</span></label>
       </div>
       <button id="startButton">Старт</button>
       <label id="sound-toggle" style="font-size: 16px; font-weight: 500;">
@@ -299,6 +300,111 @@
       osc.connect(gain).connect(masterGain);
       osc.start(now);
       osc.stop(now + 0.12);
+    }
+
+    function playFocusSwitch(layerName) {
+      // Focus switch sound disabled - sound only used in noise mode
+      return;
+    }
+
+    let continuousNoiseNodes = null;
+
+    function startContinuousNoise() {
+      if (!audioCtx || !soundEnabled || continuousNoiseNodes) return;
+      
+      // Create continuous white noise for noise mode
+      const noiseBuffer1 = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+      const noiseBuffer2 = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+      const noiseBuffer3 = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+      
+      // Generate white noise for all three layers
+      const noiseData1 = noiseBuffer1.getChannelData(0);
+      const noiseData2 = noiseBuffer2.getChannelData(0);
+      const noiseData3 = noiseBuffer3.getChannelData(0);
+      for (let i = 0; i < noiseData1.length; i++) {
+        noiseData1[i] = (Math.random() * 2 - 1) * 0.3; // Back layer - quieter
+        noiseData2[i] = (Math.random() * 2 - 1) * 0.4; // Mid layer - medium
+        noiseData3[i] = (Math.random() * 2 - 1) * 0.2; // Front layer - quiet but crisp
+      }
+      
+      const noiseSource1 = audioCtx.createBufferSource();
+      const noiseSource2 = audioCtx.createBufferSource();
+      const noiseSource3 = audioCtx.createBufferSource();
+      
+      noiseSource1.buffer = noiseBuffer1;
+      noiseSource2.buffer = noiseBuffer2;
+      noiseSource3.buffer = noiseBuffer3;
+      
+      noiseSource1.loop = true;
+      noiseSource2.loop = true;
+      noiseSource3.loop = true;
+      
+      // Filters for each layer
+      const filter1 = audioCtx.createBiquadFilter();
+      const filter2 = audioCtx.createBiquadFilter();
+      const filter3 = audioCtx.createBiquadFilter();
+      
+      // Back layer - low frequency noise
+      filter1.type = 'bandpass';
+      filter1.frequency.value = 300;
+      filter1.Q.value = 2;
+      
+      // Mid layer - mid frequency noise
+      filter2.type = 'bandpass';
+      filter2.frequency.value = 1000;
+      filter2.Q.value = 3;
+      
+      // Front layer - high frequency noise
+      filter3.type = 'highpass';
+      filter3.frequency.value = 2000;
+      filter3.Q.value = 4;
+      
+      // Gain controls
+      const gain1 = audioCtx.createGain();
+      const gain2 = audioCtx.createGain();
+      const gain3 = audioCtx.createGain();
+      
+      gain1.gain.value = 0.15;
+      gain2.gain.value = 0.12;
+      gain3.gain.value = 0.08;
+      
+      // Panning for spatial effect
+      const pan1 = audioCtx.createStereoPanner();
+      const pan2 = audioCtx.createStereoPanner();
+      const pan3 = audioCtx.createStereoPanner();
+      
+      pan1.pan.value = -0.3; // Back layer - left
+      pan2.pan.value = 0;    // Mid layer - center
+      pan3.pan.value = 0.3;  // Front layer - right
+      
+      // Connect audio graph
+      noiseSource1.connect(filter1).connect(gain1).connect(pan1).connect(masterGain);
+      noiseSource2.connect(filter2).connect(gain2).connect(pan2).connect(masterGain);
+      noiseSource3.connect(filter3).connect(gain3).connect(pan3).connect(masterGain);
+      
+      // Start all noise sources
+      noiseSource1.start();
+      noiseSource2.start();
+      noiseSource3.start();
+      
+      // Store references for cleanup
+      continuousNoiseNodes = {
+        sources: [noiseSource1, noiseSource2, noiseSource3],
+        gains: [gain1, gain2, gain3],
+        filters: [filter1, filter2, filter3],
+        pans: [pan1, pan2, pan3]
+      };
+    }
+
+    function stopContinuousNoise() {
+      if (continuousNoiseNodes) {
+        continuousNoiseNodes.sources.forEach(source => {
+          try {
+            source.stop();
+          } catch (e) { /* ignore if already stopped */ }
+        });
+        continuousNoiseNodes = null;
+      }
     }
 
     function startTicking() {
@@ -483,6 +589,180 @@
       return arr.slice(0, randInt(4, 10)).join('');
     }
 
+    function renderNoiseMode(durationMs) {
+      const startTime = performance.now();
+      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
+      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
+      stopTicking(); clearSymbol(); updateHUD(); 
+      
+      // Noise mode always uses white background
+      setTheme(false); // false = light theme (white background)
+      
+      // 50% chance for static (non-moving) noise mode
+      const isStaticNoise = Math.random() < 0.5;
+      
+      // Start continuous white noise for noise mode
+      startContinuousNoise();
+
+      const layersRoot = document.getElementById('layers');
+      const back = document.getElementById('layerBack');
+      const mid = document.getElementById('layerMid');
+      const front = document.getElementById('layerFront');
+      [back, mid, front].forEach(el => { if (el) { el.innerHTML=''; el.classList.remove('focus','unfocus'); } });
+      if (layersRoot) {
+        layersRoot.style.opacity = '0';
+        layersRoot.style.transition = 'opacity 800ms ease';
+      }
+      requestAnimationFrame(() => { if (layersRoot) layersRoot.style.opacity = '1'; });
+      
+      const vw = Math.max(window.innerWidth, 320);
+      const vh = Math.max(window.innerHeight, 320);
+      
+      // Clear existing canvases
+      [back, mid, front].forEach(el => {
+        if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
+      });
+      
+      function createLayerCanvas(parent) {
+        const dpr = window.devicePixelRatio || 1;
+        const c = document.createElement('canvas');
+        c.width = vw * dpr;
+        c.height = vh * dpr;
+        c.style.position = 'absolute';
+        c.style.left = '0';
+        c.style.top = '0';
+        c.style.width = `${vw}px`;
+        c.style.height = `${vh}px`;
+        parent.appendChild(c);
+        
+        const ctx = c.getContext('2d');
+        ctx.scale(dpr, dpr);
+        return { canvas: c, ctx };
+      }
+      
+      const layerBack = createLayerCanvas(back);
+      const layerMid = createLayerCanvas(mid);
+      const layerFront = createLayerCanvas(front);
+      
+      const isDark = document.documentElement.classList.contains('dark');
+      const noiseColor = isDark ? 'white' : 'black';
+      
+      // Generate noise patterns for each layer
+      function generateNoisePattern(ctx, density, dotSize) {
+        ctx.clearRect(0, 0, vw, vh);
+        ctx.fillStyle = noiseColor;
+        
+        const numDots = Math.floor((vw * vh) / (density * density));
+        for (let i = 0; i < numDots; i++) {
+          const x = Math.random() * vw;
+          const y = Math.random() * vh;
+          const size = dotSize + Math.random() * dotSize;
+          
+          ctx.beginPath();
+          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Different noise characteristics for each layer - back to dots
+      const noiseConfigs = [
+        { density: 15, dotSize: 1.5 }, // back - fine dots
+        { density: 25, dotSize: 2.5 }, // mid - medium dots  
+        { density: 35, dotSize: 4.0 }  // front - large dots
+      ];
+      
+      const layers = [layerBack, layerMid, layerFront];
+      
+      // Animation function to regenerate noise (or keep static)
+      let running = true;
+      let staticPatternGenerated = false;
+      function animateNoise() {
+        if (!running) return;
+        
+        // In static mode, generate pattern only once
+        if (isStaticNoise && staticPatternGenerated) {
+          requestAnimationFrame(animateNoise);
+          return;
+        }
+        
+        layers.forEach((layer, idx) => {
+          const config = noiseConfigs[idx];
+          generateNoisePattern(layer.ctx, config.density, config.dotSize);
+        });
+        
+        if (isStaticNoise) {
+          staticPatternGenerated = true;
+          // In static mode, just keep checking but don't regenerate
+          requestAnimationFrame(animateNoise);
+        } else {
+          // In dynamic mode, continue with regular intervals
+          const delays = [100, 150, 200]; // Different update frequencies
+          const delay = delays[Math.floor(Math.random() * delays.length)];
+          
+          setTimeout(() => {
+            requestAnimationFrame(animateNoise);
+          }, delay);
+        }
+      }
+      
+      // Start noise animation
+      animateNoise();
+      
+      function setFocus(target) {
+        const map = { back, mid, front };
+        Object.entries(map).forEach(([key, el]) => {
+          if (!el) return;
+          if (key === target) {
+            el.classList.add('focus');
+            el.classList.remove('unfocus');
+            // Play sound exactly when focus is applied
+            playFocusSwitch(target);
+          } else {
+            el.classList.add('unfocus');
+            el.classList.remove('focus');
+          }
+        });
+        const center = document.getElementById('center');
+        if (center) {
+          center.classList.toggle('focusViz', target === 'mid');
+          center.classList.toggle('unfocusViz', target !== 'mid');
+        }
+      }
+      setFocus('mid');
+      
+      // Random focus switching - more chaotic than symbol mode, no consecutive repeats
+      const focusNames = ['mid', 'back', 'front'];
+      const nSwitches = Math.max(3, Math.floor(durationMs / 2000)); // Switch every ~2 seconds
+      let lastFocus = 'mid';
+      const switchTimers = [];
+      for (let i = 0; i < nSwitches; i++) {
+        let next;
+        do {
+          next = focusNames[randInt(0, 3)];
+        } while (next === lastFocus); // Prevent consecutive same layer
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); // Add more randomness
+        switchTimers.push(setTimeout(() => setFocus(next), Math.max(0, at)));
+        lastFocus = next;
+      }
+      window._focusTimers.push(...switchTimers);
+      
+      const center = document.getElementById('center');
+      if (center) {
+        center.classList.remove('unfocusViz');
+        center.classList.add('focusViz');
+        center.innerHTML = ``;
+      }
+      
+      const shutters = document.getElementById('shutters');
+      const freezeLead = 2000;
+      freezeTimer = setTimeout(() => { 
+          running = false;
+          stopContinuousNoise(); // Stop continuous noise when noise mode ends
+      }, Math.max(0, durationMs));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+    }
+
     function renderWordsMode(durationMs) {
       const startTime = performance.now();
       clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
@@ -556,6 +836,7 @@
       const wordColor = isDark ? '#fff' : '#000';
       
       function setFocus(target) {
+        playFocusSwitch(target);
         const map = { back, mid, front };
         Object.entries(map).forEach(([key, el]) => {
           if (!el) return;
@@ -578,7 +859,7 @@
         let next;
         do {
           next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus);
+        } while (next === lastFocus); // Prevent consecutive same layer
         const at = Math.floor((i + 1) * durationMs / (nSwitches + 1));
         switchTimers.push(setTimeout(() => setFocus(next), at));
         lastFocus = next;
@@ -724,6 +1005,8 @@
             focusableElements[index - 1].classList.remove('focus');
           }
           element.classList.add('focus');
+          // Play focus sound for target mode
+          playFocusSwitch('mid'); // Use 'mid' frequency range for target mode
         }, index * FOCUS_SHIFT_INTERVAL);
         allTimers.push(focusTimer);
       });
@@ -794,6 +1077,7 @@
       }
 
       function setFocus(target) {
+        playFocusSwitch(target);
         const map = { back, mid, front };
         Object.entries(map).forEach(([key, el]) => {
           if (!el) return;
@@ -806,13 +1090,31 @@
           center.classList.toggle('unfocusViz', target !== 'mid');
         }
       }
-      setFocus('mid');
+      
+      // Set initial focus silently (without sound)
+      const initialTarget = 'mid';
+      const map = { back, mid, front };
+      Object.entries(map).forEach(([key, el]) => {
+        if (!el) return;
+        el.classList.toggle('focus', key === initialTarget);
+        el.classList.toggle('unfocus', key !== initialTarget);
+      });
+      const centerEl = document.getElementById('center');
+      if (centerEl) {
+        centerEl.classList.toggle('focusViz', initialTarget === 'mid');
+        centerEl.classList.toggle('unfocusViz', initialTarget !== 'mid');
+      }
 
       const focusPlan = ['mid', 'back', 'front'];
       const extraSwitches = randInt(1, 3);
       for (let i=0;i<extraSwitches;i++) {
-        const r = Math.random();
-        focusPlan.push(r < 0.5 ? 'mid' : (r < 0.75 ? 'back' : 'front'));
+        let nextLayer;
+        const lastInPlan = focusPlan[focusPlan.length - 1];
+        do {
+          const r = Math.random();
+          nextLayer = r < 0.33 ? 'mid' : (r < 0.66 ? 'back' : 'front');
+        } while (nextLayer === lastInPlan); // Prevent consecutive same layer
+        focusPlan.push(nextLayer);
       }
       let spent = 0;
       const switchTimers = [];
@@ -866,6 +1168,7 @@
       if (document.getElementById('modeSymbol').checked) availableModes.push('symbol');
       if (document.getElementById('modeTarget').checked) availableModes.push('target');
       if (document.getElementById('modeWords').checked) availableModes.push('words');
+      if (document.getElementById('modeNoise').checked) availableModes.push('noise');
       
       let selectionPool = [...availableModes];
       if (lastSelectedMode === 'target' && availableModes.length > 1) {
@@ -879,6 +1182,8 @@
         renderTargetMode(showMs);
       } else if (selectedMode === 'words') {
         renderWordsMode(showMs);
+      } else if (selectedMode === 'noise') {
+        renderNoiseMode(showMs);
       } else {
         renderSymbolFor(showMs);
       }
@@ -888,6 +1193,7 @@
       phase = 'pause';
       updateHUD();
       stopTicking();
+      stopContinuousNoise(); // Stop any continuous noise
       setTheme(true);
       clearSymbol();
       clearLayers();
@@ -959,7 +1265,8 @@
       const checkboxes = [
         document.getElementById('modeSymbol'),
         document.getElementById('modeTarget'),
-        document.getElementById('modeWords')
+        document.getElementById('modeWords'),
+        document.getElementById('modeNoise')
       ];
 
       function validateCheckboxes() {
