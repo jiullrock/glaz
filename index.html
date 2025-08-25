@@ -111,9 +111,73 @@
     }
     #intro-settings {
       display: flex;
-      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 18px 20px;
       font-size: clamp(14px, 3vw, 18px);
       font-weight: 500;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    #intro-settings label {
+      white-space: nowrap;
+      min-width: 120px;
+      justify-content: center;
+      text-align: center;
+      transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease;
+      flex: 0 0 calc(33.333% - 14px); /* Force max 3 per row */
+      padding: 6px 10px;
+      border-radius: 8px;
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    #intro-settings label:hover {
+      transform: scale(1.05);
+    }
+    #intro-settings label:has(input:checked) {
+      background-color: rgba(255, 255, 255, 0.12);
+    }
+    #language-switch {
+      opacity: 0.8;
+      font-weight: 500;
+    }
+    #language-switch label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background-color 0.2s ease;
+    }
+    #language-switch label:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    #language-switch input[type="radio"] {
+      width: 14px;
+      height: 14px;
+    }
+    /* Desktop: 3 in first row, 2 centered in second row */
+    @media (min-width: 600px) {
+      #intro-settings {
+        gap: 20px 24px;
+        max-width: 650px;
+      }
+      #intro-settings label {
+        min-width: 140px;
+        flex: 0 0 calc(33.333% - 16px); /* Force max 3 per row */
+      }
+    }
+    /* Mobile: 2 per row, all centered */
+    @media (max-width: 480px) {
+      #intro-settings {
+        gap: 16px 18px;
+        font-size: clamp(12px, 2.8vw, 16px);
+        max-width: 400px;
+      }
+      #intro-settings label {
+        min-width: 110px;
+        flex: 0 0 calc(50% - 9px); /* Force max 2 per row on mobile */
+      }
     }
     #intro-settings label, #sound-toggle {
       cursor: pointer;
@@ -209,19 +273,24 @@
   <div class="muteBadge" id="mute"></div>
   <div class="intro" id="intro">
     <div class="intro-content">
-      <div id="intro-title" style="line-height: 1.1;">GLAZ<br><small style="font-size: clamp(14px, 3vw, 22px); opacity: 0.8;">Тренажёр для глаз</small></div>
+      <div id="intro-title" style="line-height: 1.1;">GLAZ<br><small style="font-size: clamp(14px, 3vw, 22px); opacity: 0.8;" data-ru="Тренажёр для глаз" data-en="Eye Trainer">Тренажёр для глаз</small></div>
       <div id="intro-settings">
-          <label><input type="checkbox" id="modeSymbol" value="symbol" checked><span>Символы</span></label>
-          <label><input type="checkbox" id="modeTarget" value="target" checked><span>Мишень</span></label>
-          <label><input type="checkbox" id="modeWords" value="words" checked><span>Слова</span></label>
-          <label><input type="checkbox" id="modeNoise" value="noise" checked><span>Шум</span></label>
+          <label><input type="checkbox" id="modeSymbol" value="symbol" checked><span data-ru="Символы" data-en="Symbols">Символы</span></label>
+          <label><input type="checkbox" id="modeTarget" value="target" checked><span data-ru="Мишень" data-en="Target">Мишень</span></label>
+          <label><input type="checkbox" id="modeWords" value="words" checked><span data-ru="Слова" data-en="Words">Слова</span></label>
+          <label><input type="checkbox" id="modeRain" value="rain" checked><span data-ru="Дождь" data-en="Rain">Дождь</span></label>
+          <label><input type="checkbox" id="modeStars" value="stars" checked><span data-ru="Звёзды" data-en="Stars">Звёзды</span></label>
       </div>
-      <button id="startButton">Старт</button>
+      <div id="language-switch" style="display: flex; gap: 12px; align-items: center; font-size: 14px;">
+        <label style="cursor: pointer;"><input type="radio" name="language" value="ru" checked> Русский</label>
+        <label style="cursor: pointer;"><input type="radio" name="language" value="en"> English</label>
+      </div>
+      <button id="startButton" data-ru="Старт" data-en="Start">Старт</button>
       <label id="sound-toggle" style="font-size: 16px; font-weight: 500;">
         <input type="checkbox" id="soundCheckbox">
-        <span>Включить звук</span>
+        <span data-ru="Включить звук" data-en="Enable sound">Включить звук</span>
       </label>
-      <small>Выбранные режимы будут переключаться</small>
+      <small data-ru="Выбранные режимы будут переключаться" data-en="Selected modes will switch">Выбранные режимы будут переключаться</small>
       <small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small>
     </div>
   </div>
@@ -256,6 +325,70 @@
     let phase = 'pause';
     let symbolWrapper = null;
     let lastSelectedMode = null;
+    let currentLanguage = 'ru';
+
+    // LocalStorage functions for saving preferences
+    function savePreferences() {
+      const preferences = {
+        language: currentLanguage,
+        soundEnabled: soundEnabled,
+        modes: {
+          symbol: document.getElementById('modeSymbol').checked,
+          target: document.getElementById('modeTarget').checked,
+          words: document.getElementById('modeWords').checked,
+          rain: document.getElementById('modeRain').checked,
+          stars: document.getElementById('modeStars').checked
+        }
+      };
+      localStorage.setItem('glazPreferences', JSON.stringify(preferences));
+    }
+
+    function loadPreferences() {
+      try {
+        const saved = localStorage.getItem('glazPreferences');
+        if (saved) {
+          const preferences = JSON.parse(saved);
+          
+          // Load language
+          if (preferences.language) {
+            currentLanguage = preferences.language;
+            const languageRadio = document.querySelector(`input[name="language"][value="${preferences.language}"]`);
+            if (languageRadio) languageRadio.checked = true;
+            updateLanguage(preferences.language);
+          }
+          
+          // Load sound setting
+          if (typeof preferences.soundEnabled === 'boolean') {
+            soundEnabled = preferences.soundEnabled;
+            const soundCheckbox = document.getElementById('soundCheckbox');
+            if (soundCheckbox) soundCheckbox.checked = soundEnabled;
+          }
+          
+          // Load mode settings
+          if (preferences.modes) {
+            Object.entries(preferences.modes).forEach(([mode, checked]) => {
+              const checkbox = document.getElementById(`mode${mode.charAt(0).toUpperCase() + mode.slice(1)}`);
+              if (checkbox) checkbox.checked = checked;
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load preferences:', e);
+      }
+    }
+
+    // Language switching functionality
+    function updateLanguage(lang) {
+      currentLanguage = lang;
+      document.querySelectorAll('[data-ru][data-en]').forEach(element => {
+        if (lang === 'ru') {
+          element.textContent = element.getAttribute('data-ru');
+        } else {
+          element.textContent = element.getAttribute('data-en');
+        }
+      });
+      savePreferences();
+    }
 
     function rand(min, max) { return Math.random() * (max - min) + min; }
     function randInt(min, max) { return Math.floor(rand(min, max)); }
@@ -589,19 +722,18 @@
       return arr.slice(0, randInt(4, 10)).join('');
     }
 
-    function renderNoiseMode(durationMs) {
+    function renderRainMode(durationMs) {
       const startTime = performance.now();
       clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); 
       
-      // Noise mode always uses white background
+      // Rain mode always uses white background
       setTheme(false); // false = light theme (white background)
       
-      // 50% chance for static (non-moving) noise mode
-      const isStaticNoise = Math.random() < 0.5;
+      // Rain mode is always dynamic (animated)
       
-      // Start continuous white noise for noise mode
+      // Start continuous white noise for rain mode
       startContinuousNoise();
 
       const layersRoot = document.getElementById('layers');
@@ -647,7 +779,7 @@
       const isDark = document.documentElement.classList.contains('dark');
       const noiseColor = isDark ? 'white' : 'black';
       
-      // Generate noise patterns for each layer
+      // Generate dynamic noise patterns for each layer
       function generateNoisePattern(ctx, density, dotSize) {
         ctx.clearRect(0, 0, vw, vh);
         ctx.fillStyle = noiseColor;
@@ -673,40 +805,27 @@
       
       const layers = [layerBack, layerMid, layerFront];
       
-      // Animation function to regenerate noise (or keep static)
+      // Animation function for dynamic rain effect
       let running = true;
-      let staticPatternGenerated = false;
-      function animateNoise() {
+      function animateRain() {
         if (!running) return;
-        
-        // In static mode, generate pattern only once
-        if (isStaticNoise && staticPatternGenerated) {
-          requestAnimationFrame(animateNoise);
-          return;
-        }
         
         layers.forEach((layer, idx) => {
           const config = noiseConfigs[idx];
           generateNoisePattern(layer.ctx, config.density, config.dotSize);
         });
         
-        if (isStaticNoise) {
-          staticPatternGenerated = true;
-          // In static mode, just keep checking but don't regenerate
-          requestAnimationFrame(animateNoise);
-        } else {
-          // In dynamic mode, continue with regular intervals
-          const delays = [100, 150, 200]; // Different update frequencies
-          const delay = delays[Math.floor(Math.random() * delays.length)];
-          
-          setTimeout(() => {
-            requestAnimationFrame(animateNoise);
-          }, delay);
-        }
+        // Dynamic mode with continuous regeneration for organic movement
+        const delays = [100, 150, 200]; // Different update frequencies
+        const delay = delays[Math.floor(Math.random() * delays.length)];
+        
+        setTimeout(() => {
+          requestAnimationFrame(animateRain);
+        }, delay);
       }
       
-      // Start noise animation
-      animateNoise();
+      // Start rain animation
+      animateRain();
       
       function setFocus(target) {
         const map = { back, mid, front };
@@ -757,7 +876,150 @@
       const freezeLead = 2000;
       freezeTimer = setTimeout(() => { 
           running = false;
-          stopContinuousNoise(); // Stop continuous noise when noise mode ends
+          stopContinuousNoise(); // Stop continuous noise when rain mode ends
+      }, Math.max(0, durationMs));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+    }
+
+    function renderStarsMode(durationMs) {
+      const startTime = performance.now();
+      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
+      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
+      stopTicking(); clearSymbol(); updateHUD(); 
+      
+      // Stars mode always uses white background
+      setTheme(false); // false = light theme (white background)
+      
+      // Stars mode is always static (no animation)
+      
+      // Start continuous white noise for stars mode
+      startContinuousNoise();
+
+      const layersRoot = document.getElementById('layers');
+      const back = document.getElementById('layerBack');
+      const mid = document.getElementById('layerMid');
+      const front = document.getElementById('layerFront');
+      [back, mid, front].forEach(el => { if (el) { el.innerHTML=''; el.classList.remove('focus','unfocus'); } });
+      if (layersRoot) {
+        layersRoot.style.opacity = '0';
+        layersRoot.style.transition = 'opacity 800ms ease';
+      }
+      requestAnimationFrame(() => { if (layersRoot) layersRoot.style.opacity = '1'; });
+      
+      const vw = Math.max(window.innerWidth, 320);
+      const vh = Math.max(window.innerHeight, 320);
+      
+      // Clear existing canvases
+      [back, mid, front].forEach(el => {
+        if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
+      });
+      
+      function createLayerCanvas(parent) {
+        const dpr = window.devicePixelRatio || 1;
+        const c = document.createElement('canvas');
+        c.width = vw * dpr;
+        c.height = vh * dpr;
+        c.style.position = 'absolute';
+        c.style.left = '0';
+        c.style.top = '0';
+        c.style.width = `${vw}px`;
+        c.style.height = `${vh}px`;
+        parent.appendChild(c);
+        
+        const ctx = c.getContext('2d');
+        ctx.scale(dpr, dpr);
+        return { canvas: c, ctx };
+      }
+      
+      const layerBack = createLayerCanvas(back);
+      const layerMid = createLayerCanvas(mid);
+      const layerFront = createLayerCanvas(front);
+      
+      const isDark = document.documentElement.classList.contains('dark');
+      const noiseColor = isDark ? 'white' : 'black';
+      
+      // Generate static star patterns for each layer
+      function generateStarsPattern(ctx, density, dotSize) {
+        ctx.clearRect(0, 0, vw, vh);
+        ctx.fillStyle = noiseColor;
+        
+        const numDots = Math.floor((vw * vh) / (density * density));
+        for (let i = 0; i < numDots; i++) {
+          const x = Math.random() * vw;
+          const y = Math.random() * vh;
+          const size = dotSize + Math.random() * dotSize;
+          
+          ctx.beginPath();
+          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Different star characteristics for each layer
+      const starsConfigs = [
+        { density: 15, dotSize: 1.5 }, // back - fine dots
+        { density: 25, dotSize: 2.5 }, // mid - medium dots  
+        { density: 35, dotSize: 4.0 }  // front - large dots
+      ];
+      
+      const layers = [layerBack, layerMid, layerFront];
+      
+      // Generate static stars pattern once
+      layers.forEach((layer, idx) => {
+        const config = starsConfigs[idx];
+        generateStarsPattern(layer.ctx, config.density, config.dotSize);
+      });
+      
+      function setFocus(target) {
+        const map = { back, mid, front };
+        Object.entries(map).forEach(([key, el]) => {
+          if (!el) return;
+          if (key === target) {
+            el.classList.add('focus');
+            el.classList.remove('unfocus');
+            // Play sound exactly when focus is applied
+            playFocusSwitch(target);
+          } else {
+            el.classList.add('unfocus');
+            el.classList.remove('focus');
+          }
+        });
+        const center = document.getElementById('center');
+        if (center) {
+          center.classList.toggle('focusViz', target === 'mid');
+          center.classList.toggle('unfocusViz', target !== 'mid');
+        }
+      }
+      setFocus('mid');
+      
+      // Random focus switching - no consecutive repeats
+      const focusNames = ['mid', 'back', 'front'];
+      const nSwitches = Math.max(3, Math.floor(durationMs / 2000)); // Switch every ~2 seconds
+      let lastFocus = 'mid';
+      const switchTimers = [];
+      for (let i = 0; i < nSwitches; i++) {
+        let next;
+        do {
+          next = focusNames[randInt(0, 3)];
+        } while (next === lastFocus); // Prevent consecutive same layer
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); // Add more randomness
+        switchTimers.push(setTimeout(() => setFocus(next), Math.max(0, at)));
+        lastFocus = next;
+      }
+      window._focusTimers.push(...switchTimers);
+      
+      const center = document.getElementById('center');
+      if (center) {
+        center.classList.remove('unfocusViz');
+        center.classList.add('focusViz');
+        center.innerHTML = ``;
+      }
+      
+      const shutters = document.getElementById('shutters');
+      const freezeLead = 2000;
+      freezeTimer = setTimeout(() => { 
+          stopContinuousNoise(); // Stop continuous noise when stars mode ends
       }, Math.max(0, durationMs));
       shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
       phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
@@ -1168,7 +1430,8 @@
       if (document.getElementById('modeSymbol').checked) availableModes.push('symbol');
       if (document.getElementById('modeTarget').checked) availableModes.push('target');
       if (document.getElementById('modeWords').checked) availableModes.push('words');
-      if (document.getElementById('modeNoise').checked) availableModes.push('noise');
+      if (document.getElementById('modeRain').checked) availableModes.push('rain');
+      if (document.getElementById('modeStars').checked) availableModes.push('stars');
       
       let selectionPool = [...availableModes];
       if (lastSelectedMode === 'target' && availableModes.length > 1) {
@@ -1182,8 +1445,10 @@
         renderTargetMode(showMs);
       } else if (selectedMode === 'words') {
         renderWordsMode(showMs);
-      } else if (selectedMode === 'noise') {
-        renderNoiseMode(showMs);
+      } else if (selectedMode === 'rain') {
+        renderRainMode(showMs);
+      } else if (selectedMode === 'stars') {
+        renderStarsMode(showMs);
       } else {
         renderSymbolFor(showMs);
       }
@@ -1203,11 +1468,13 @@
 
       const center = document.getElementById('center');
       if (center) {
+        const restText = currentLanguage === 'ru' ? 'Отдых...' : 'Rest...';
+        const continueText = currentLanguage === 'ru' ? 'Нажмите для продолжения' : 'Click to continue';
         center.innerHTML = `
           <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-            <div class="title large pulse-large">Отдых...</div>
+            <div class="title large pulse-large">${restText}</div>
           </div>
-          <small style="position: absolute; bottom: 30%; left: 0; right: 0; font-size: 16px; opacity: 0.7;">Нажмите для продолжения</small>
+          <small style="position: absolute; bottom: 30%; left: 0; right: 0; font-size: 16px; opacity: 0.7;">${continueText}</small>
         `;
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
@@ -1262,12 +1529,26 @@
     function initIntroScreen() {
       const startButton = document.getElementById('startButton');
       const soundCheckbox = document.getElementById('soundCheckbox');
+      const languageRadios = document.querySelectorAll('input[name="language"]');
       const checkboxes = [
         document.getElementById('modeSymbol'),
         document.getElementById('modeTarget'),
         document.getElementById('modeWords'),
-        document.getElementById('modeNoise')
+        document.getElementById('modeRain'),
+        document.getElementById('modeStars')
       ];
+
+      // Load saved preferences first
+      loadPreferences();
+
+      // Language switcher functionality
+      languageRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            updateLanguage(e.target.value);
+          }
+        });
+      });
 
       function validateCheckboxes() {
         const checkedCheckboxes = checkboxes.filter(cb => cb.checked);
@@ -1276,6 +1557,7 @@
         } else {
           checkboxes.forEach(cb => cb.disabled = false);
         }
+        savePreferences();
       }
 
       checkboxes.forEach(cb => {
@@ -1288,6 +1570,7 @@
             initAudio();
         }
         updateHUD();
+        savePreferences();
       });
       
       startButton.addEventListener('click', (e) => {
