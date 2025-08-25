@@ -14,6 +14,7 @@
 - **Symbols** — Dynamic geometric shapes with drawing animations to enhance visual tracking
 - **Target** — Concentric circles with progressive focus training from outer to inner rings
 - **Words** — Multi-language text movement exercises for reading comprehension and eye coordination
+- **Emoji** — Animated emoji characters with depth layering for visual focus training
 - **Rain** — Animated particle patterns simulating chaotic movement for peripheral vision training
 - **Stars** — Static dot patterns for sustained focus and concentration exercises
 
@@ -126,6 +127,7 @@ glaz/
 - **Символы** — Динамические геометрические фигуры с анимацией рисования для улучшения визуального отслеживания
 - **Мишень** — Концентрические круги с прогрессивной тренировкой фокуса от внешних к внутренним кольцам
 - **Слова** — Упражнения движения многоязычного текста для понимания чтения и координации глаз
+- **Эмодзи** — Анимированные символы эмодзи с многослойной глубиной для тренировки визуальной фокусировки
 - **Дождь** — Анимированные паттерны частиц, имитирующие хаотичное движение для тренировки периферического зрения
 - **Звёзды** — Статичные точечные паттерны для упражнений устойчивой фокусировки и концентрации
 
@@ -239,6 +241,5 @@ This project is open source and available under the [MIT License](LICENSE).
 ## Support / Поддержка
 
 For questions or support, please visit: [https://t.me/glaz_reg](https://t.me/glaz_reg)
-
 
 По вопросам или поддержке, пожалуйста, посетите: [https://t.me/glaz_reg](https://t.me/glaz_reg)
