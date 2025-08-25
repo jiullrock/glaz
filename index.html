@@ -361,7 +361,13 @@
           if (typeof preferences.soundEnabled === 'boolean') {
             soundEnabled = preferences.soundEnabled;
             const soundCheckbox = document.getElementById('soundCheckbox');
-            if (soundCheckbox) soundCheckbox.checked = soundEnabled;
+            if (soundCheckbox) {
+              soundCheckbox.checked = soundEnabled;
+              // Initialize audio if sound is enabled
+              if (soundEnabled && !audioCtx) {
+                initAudio();
+              }
+            }
           }
           
           // Load mode settings
