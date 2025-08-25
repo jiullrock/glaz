@@ -235,6 +235,42 @@
       }
     }
     
+    /* Auto-continue countdown styling */
+    @keyframes countdownPulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    #countdownContainer {
+      font-family: inherit;
+    }
+    
+    #countdownDisplay {
+      font-size: 48px;
+      font-weight: 700;
+      color: #4ade80;
+      text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+      margin-top: 8px;
+    }
+    
+    #autoContinueCheckbox {
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+    }
+    
+    @media (max-width: 600px) {
+      #countdownDisplay {
+        font-size: 36px !important;
+      }
+      
+      #autoContinueCheckbox {
+        width: 14px !important;
+        height: 14px !important;
+      }
+    }
+    
     .centerOverlay {
       position: fixed;
       inset: 0;
@@ -346,7 +382,7 @@
   (function() {
     // *** VERSION CONFIGURATION ***
     // Easily changeable version number displayed on start screen
-    const APP_VERSION = 'v1.1.3';
+    const APP_VERSION = 'v1.1.4';
     // *** END VERSION CONFIGURATION ***
     
     const app = document.getElementById('app');
@@ -366,12 +402,15 @@
     let currentDrawMs = 0;
     let wakeLock = null;
     let soundEnabled = false; 
-    let hintsEnabled = true; 
+    let hintsEnabled = true;
+    let autoContinueEnabled = false; 
 
     let phase = 'pause';
     let symbolWrapper = null;
     let lastSelectedMode = null;
     let currentLanguage = 'ru';
+    let autoContinueTimer = null;
+    let countdownSeconds = 10;
 
     // LocalStorage functions for saving preferences
     function savePreferences() {
@@ -379,6 +418,7 @@
         language: currentLanguage,
         soundEnabled: soundEnabled,
         hintsEnabled: hintsEnabled,
+        autoContinueEnabled: autoContinueEnabled,
         modes: {
           symbol: document.getElementById('modeSymbol').checked,
           target: document.getElementById('modeTarget').checked,
@@ -426,6 +466,11 @@
             }
           }
           
+          // Load auto-continue setting
+          if (typeof preferences.autoContinueEnabled === 'boolean') {
+            autoContinueEnabled = preferences.autoContinueEnabled;
+          }
+          
           // Load mode settings
           if (preferences.modes) {
             Object.entries(preferences.modes).forEach(([mode, checked]) => {
@@ -457,6 +502,64 @@
       const versionElement = document.getElementById('version-number');
       if (versionElement) {
         versionElement.textContent = APP_VERSION;
+      }
+    }
+
+    // Auto-continue countdown functionality
+    function startAutoContinueCountdown() {
+      if (autoContinueTimer) {
+        clearInterval(autoContinueTimer);
+        autoContinueTimer = null;
+      }
+      
+      countdownSeconds = 10;
+      updateCountdownDisplay();
+      
+      autoContinueTimer = setInterval(() => {
+        countdownSeconds--;
+        updateCountdownDisplay();
+        
+        if (countdownSeconds <= 0) {
+          clearInterval(autoContinueTimer);
+          autoContinueTimer = null;
+          if (phase === 'pause') {
+            proceedToNextCycle();
+          }
+        }
+      }, 1000);
+    }
+
+    function stopAutoContinueCountdown() {
+      if (autoContinueTimer) {
+        clearInterval(autoContinueTimer);
+        autoContinueTimer = null;
+      }
+      hideCountdownDisplay();
+    }
+
+    function updateCountdownDisplay() {
+      const countdownElement = document.getElementById('countdownDisplay');
+      if (countdownElement) {
+        countdownElement.textContent = countdownSeconds;
+        // Add pulsing animation on each tick
+        countdownElement.style.animation = 'none';
+        requestAnimationFrame(() => {
+          countdownElement.style.animation = 'countdownPulse 0.6s ease-out';
+        });
+      }
+    }
+
+    function hideCountdownDisplay() {
+      const countdownContainer = document.getElementById('countdownContainer');
+      if (countdownContainer) {
+        countdownContainer.style.display = 'none';
+      }
+    }
+
+    function showCountdownDisplay() {
+      const countdownContainer = document.getElementById('countdownContainer');
+      if (countdownContainer) {
+        countdownContainer.style.display = 'block';
       }
     }
 
@@ -729,6 +832,7 @@
     function clearShutterTimer() { if (shutterTimer) { clearTimeout(shutterTimer); shutterTimer = null; } }
     function clearCounterTimer() { if (counterTimer) { clearInterval(counterTimer); counterTimer = null; } }
     function clearFlickerTimer() { if (flickerTimer) { clearTimeout(flickerTimer); flickerTimer = null; } }
+    function clearAutoContinueTimer() { if (autoContinueTimer) { clearInterval(autoContinueTimer); autoContinueTimer = null; } }
 
     function clearFocusTimers() {
       if (window._focusTimers && Array.isArray(window._focusTimers)) {
@@ -1667,6 +1771,7 @@
       clearPhaseTimer();
       clearFreezeTimer();
       clearCounterTimer();
+      clearAutoContinueTimer();
       
       // Remove hint click handler during pause
       removeHintClickHandler();
@@ -1682,12 +1787,22 @@
       if (center) {
         const restText = currentLanguage === 'ru' ? 'Отдых...' : 'Rest...';
         const continueText = currentLanguage === 'ru' ? 'Нажмите для продолжения' : 'Click to continue';
+        const autoContinueText = currentLanguage === 'ru' ? 'Автоматическое продолжение' : 'Auto continue';
         const backToStartText = currentLanguage === 'ru' ? 'В начало' : 'Back to Start';
         center.innerHTML = `
           <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
             <div class="title large pulse-large">${restText}</div>
           </div>
-          <small style="position: absolute; bottom: 30%; left: 0; right: 0; font-size: 16px; opacity: 0.7;">${continueText}</small>
+          <small id="continueHint" style="position: absolute; bottom: 30%; left: 0; right: 0; font-size: 16px; opacity: 0.7; display: ${autoContinueEnabled ? 'none' : 'block'};">${continueText}</small>
+          <div style="position: absolute; bottom: 22%; left: 50%; transform: translateX(-50%); pointer-events: auto;">
+            <label style="display: flex; align-items: center; justify-content: center; font-size: 14px; opacity: 0.8; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="autoContinueCheckbox" ${autoContinueEnabled ? 'checked' : ''}>
+              <span>${autoContinueText}</span>
+            </label>
+            <div id="countdownContainer" style="text-align: center; margin-top: 12px; display: ${autoContinueEnabled ? 'block' : 'none'};">
+              <div id="countdownDisplay">${countdownSeconds}</div>
+            </div>
+          </div>
           <button id="backToStartBtn" style="
             position: absolute;
             bottom: 8%;
@@ -1717,6 +1832,34 @@
             window.location.reload();
           });
         }
+        
+        // Add event listener for auto-continue checkbox
+        const autoContinueCheckbox = document.getElementById('autoContinueCheckbox');
+        if (autoContinueCheckbox) {
+          autoContinueCheckbox.addEventListener('change', (e) => {
+            e.stopPropagation();
+            autoContinueEnabled = autoContinueCheckbox.checked;
+            savePreferences();
+            
+            // Show/hide continue hint based on checkbox state
+            const continueHint = document.getElementById('continueHint');
+            if (continueHint) {
+              continueHint.style.display = autoContinueEnabled ? 'none' : 'block';
+            }
+            
+            if (autoContinueEnabled) {
+              showCountdownDisplay();
+              startAutoContinueCountdown();
+            } else {
+              stopAutoContinueCountdown();
+            }
+          });
+        }
+        
+        // Start countdown if auto-continue is enabled
+        if (autoContinueEnabled) {
+          startAutoContinueCountdown();
+        }
       }
 
       app.addEventListener('click', proceedToNextCycle, { once: true });
@@ -1726,7 +1869,9 @@
         if(event) {
           event.stopPropagation();
         }
-        if(phase === 'pause') { 
+        if(phase === 'pause') {
+            // Stop auto-continue timer if running
+            stopAutoContinueCountdown();
             showSymbol();
         }
     }
