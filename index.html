@@ -9,6 +9,42 @@
       --bg: #ffffff;
       --fg: #000000;
     }
+    
+    /* Оптимизации для мобильных устройств и четкого рендеринга */
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      image-rendering: -webkit-optimize-contrast;
+      /* Дополнительные правила для максимальной четкости */
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: -o-crisp-edges;
+      -ms-interpolation-mode: nearest-neighbor;
+      /* Отключаем любое сглаживание на уровне шрифтов */
+      -webkit-font-smoothing: none;
+      -moz-osx-font-smoothing: unset;
+      font-smooth: never;
+      text-rendering: optimizeSpeed;
+    }
+    
+    /* Дополнительные оптимизации для высокого DPR */
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+      canvas {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: optimize-contrast;
+        image-rendering: crisp-edges;
+      }
+    }
+    
+    /* Оптимизации для мобильных устройств */
+    @media (max-width: 768px) {
+      canvas {
+        transform: translateZ(0); /* Аппаратное ускорение */
+        backface-visibility: hidden;
+        perspective: 1000;
+      }
+    }
+    
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
@@ -126,7 +162,7 @@
       justify-content: center;
       text-align: center;
       transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease;
-      flex: 0 0 calc(33.333% - 14px); /* Force max 3 per row */
+      flex: 0 0 calc(33.333% - 14px); /* Максимум 3 в ряд */
       padding: 6px 10px;
       border-radius: 8px;
       background-color: rgba(255, 255, 255, 0.05);
@@ -156,7 +192,7 @@
       width: 14px;
       height: 14px;
     }
-    /* Desktop: 3 in first row, 2 centered in second row */
+ 
     @media (min-width: 600px) {
       #intro-settings {
         gap: 20px 24px;
@@ -164,10 +200,10 @@
       }
       #intro-settings label {
         min-width: 140px;
-        flex: 0 0 calc(33.333% - 16px); /* Force max 3 per row */
+        flex: 0 0 calc(33.333% - 16px); 
       }
     }
-    /* Mobile: 2 per row, all centered */
+    
     @media (max-width: 480px) {
       #intro-settings {
         gap: 16px 18px;
@@ -176,7 +212,7 @@
       }
       #intro-settings label {
         min-width: 110px;
-        flex: 0 0 calc(50% - 9px); /* Force max 2 per row on mobile */
+        flex: 0 0 calc(50% - 9px); 
       }
     }
     #intro-settings label, #sound-toggle {
@@ -206,14 +242,12 @@
     .intro a { color: #dddddd; text-decoration: none; pointer-events: auto; opacity: 0.8; }
     .intro a:hover { text-decoration: underline; opacity: 1; }
     
-    /* Version number styling */
     #version-number {
       pointer-events: none;
       user-select: none;
       z-index: 1;
     }
     
-    /* Responsive adjustments for version number */
     @media (max-width: 480px) {
       #version-number {
         font-size: 8px !important;
@@ -222,7 +256,6 @@
       }
     }
     
-    /* Back to start button styling */
     #backToStartBtn {
       font-family: inherit;
     }
@@ -235,7 +268,6 @@
       }
     }
     
-    /* Auto-continue countdown styling */
     @keyframes countdownPulse {
       0% { transform: scale(1); opacity: 1; }
       50% { transform: scale(1.1); opacity: 0.8; }
@@ -350,6 +382,7 @@
           <label><input type="checkbox" id="modeSymbol" value="symbol" checked><span data-ru="Символы" data-en="Symbols">Символы</span></label>
           <label><input type="checkbox" id="modeTarget" value="target" checked><span data-ru="Мишень" data-en="Target">Мишень</span></label>
           <label><input type="checkbox" id="modeWords" value="words" checked><span data-ru="Слова" data-en="Words">Слова</span></label>
+          <label><input type="checkbox" id="modeEmoji" value="emoji" checked><span data-ru="Эмодзи" data-en="Emoji">Эмодзи</span></label>
           <label><input type="checkbox" id="modeRain" value="rain" checked><span data-ru="Дождь" data-en="Rain">Дождь</span></label>
           <label><input type="checkbox" id="modeStars" value="stars" checked><span data-ru="Звёзды" data-en="Stars">Звёзды</span></label>
       </div>
@@ -380,10 +413,10 @@
 
   <script>
   (function() {
-    // *** VERSION CONFIGURATION ***
-    // Easily changeable version number displayed on start screen
-    const APP_VERSION = 'v1.1.4';
-    // *** END VERSION CONFIGURATION ***
+    // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
+    // Легко изменяемый номер версии, отображаемый на стартовом экране
+    const APP_VERSION = 'v1.2.0';
+    // *** КОНЕЦ КОНФИГУРАЦИИ ВЕРСИИ ***
     
     const app = document.getElementById('app');
     const hud = document.getElementById('hud');
@@ -412,7 +445,7 @@
     let autoContinueTimer = null;
     let countdownSeconds = 10;
 
-    // LocalStorage functions for saving preferences
+    // Функции LocalStorage для сохранения настроек
     function savePreferences() {
       const preferences = {
         language: currentLanguage,
@@ -423,6 +456,7 @@
           symbol: document.getElementById('modeSymbol').checked,
           target: document.getElementById('modeTarget').checked,
           words: document.getElementById('modeWords').checked,
+          emoji: document.getElementById('modeEmoji').checked,
           rain: document.getElementById('modeRain').checked,
           stars: document.getElementById('modeStars').checked
         }
@@ -436,7 +470,7 @@
         if (saved) {
           const preferences = JSON.parse(saved);
           
-          // Load language
+          // Загрузка языка
           if (preferences.language) {
             currentLanguage = preferences.language;
             const languageRadio = document.querySelector(`input[name="language"][value="${preferences.language}"]`);
@@ -444,20 +478,20 @@
             updateLanguage(preferences.language);
           }
           
-          // Load sound setting
+          // Загрузка настроек звука
           if (typeof preferences.soundEnabled === 'boolean') {
             soundEnabled = preferences.soundEnabled;
             const soundCheckbox = document.getElementById('soundCheckbox');
             if (soundCheckbox) {
               soundCheckbox.checked = soundEnabled;
-              // Initialize audio if sound is enabled
+              // Инициализация аудио, если звук включен
               if (soundEnabled && !audioCtx) {
                 initAudio();
               }
             }
           }
           
-          // Load hints setting
+          // Загрузка настроек подсказок
           if (typeof preferences.hintsEnabled === 'boolean') {
             hintsEnabled = preferences.hintsEnabled;
             const hintsCheckbox = document.getElementById('hintsCheckbox');
@@ -466,12 +500,12 @@
             }
           }
           
-          // Load auto-continue setting
+          // Загрузка настроек автопродолжения
           if (typeof preferences.autoContinueEnabled === 'boolean') {
             autoContinueEnabled = preferences.autoContinueEnabled;
           }
           
-          // Load mode settings
+          // Загрузка настроек режимов
           if (preferences.modes) {
             Object.entries(preferences.modes).forEach(([mode, checked]) => {
               const checkbox = document.getElementById(`mode${mode.charAt(0).toUpperCase() + mode.slice(1)}`);
@@ -484,7 +518,7 @@
       }
     }
 
-    // Language switching functionality
+    // Функциональность переключения языка
     function updateLanguage(lang) {
       currentLanguage = lang;
       document.querySelectorAll('[data-ru][data-en]').forEach(element => {
@@ -497,7 +531,7 @@
       savePreferences();
     }
 
-    // Version display functionality
+    // Функциональность отображения версии
     function updateVersionDisplay() {
       const versionElement = document.getElementById('version-number');
       if (versionElement) {
@@ -505,7 +539,7 @@
       }
     }
 
-    // Auto-continue countdown functionality
+    // Функциональность обратного отсчёта автопродолжения
     function startAutoContinueCountdown() {
       if (autoContinueTimer) {
         clearInterval(autoContinueTimer);
@@ -541,7 +575,7 @@
       const countdownElement = document.getElementById('countdownDisplay');
       if (countdownElement) {
         countdownElement.textContent = countdownSeconds;
-        // Add pulsing animation on each tick
+        // Добавляем анимацию пульсации на каждый тик
         countdownElement.style.animation = 'none';
         requestAnimationFrame(() => {
           countdownElement.style.animation = 'countdownPulse 0.6s ease-out';
@@ -598,7 +632,7 @@
     let hintClickHandler = null;
 
     function showCycleInfo(modeName) {
-      // Check if hints are enabled
+      // Проверяем, включены ли подсказки
       if (!hintsEnabled) {
         return;
       }
@@ -607,6 +641,7 @@
         'symbol': { ru: 'Символы', en: 'Symbols' },
         'target': { ru: 'Мишень', en: 'Target' },
         'words': { ru: 'Слова', en: 'Words' },
+        'emoji': { ru: 'Эмодзи', en: 'Emoji' },
         'rain': { ru: 'Дождь', en: 'Rain' },
         'stars': { ru: 'Звёзды', en: 'Stars' }
       };
@@ -617,29 +652,29 @@
         ? 'Концентрируйся на резких деталях'
         : 'Focus on sharp details';
       
-      // Store hint content for later use
+      // Сохраняем содержимое подсказки для дальнейшего использования
       currentHintContent = {
         modeLabel,
         recommendation
       };
       
-      // Set HUD content and initial state
+      // Устанавливаем содержимое HUD и начальное состояние
       hud.innerHTML = `
         <div style="font-weight: 600; margin-bottom: 4px;">${modeLabel}</div>
         <div style="font-size: 12px; opacity: 0.8;">${recommendation}</div>
       `;
       
-      // Set initial HUD animation state
+      // Устанавливаем начальное состояние анимации HUD
       hud.style.opacity = '0';
       hud.style.transform = 'translateX(0)';
       hud.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
       
-      // Fade in
+      // Плавное появление
       requestAnimationFrame(() => {
         hud.style.opacity = '0.9';
         isHintVisible = true;
         
-        // Add click handler for hint toggle during training
+        // Добавляем обработчик клика для переключения подсказки во время тренировки
         addHintClickHandler();
       });
     }
@@ -648,12 +683,12 @@
       if (!currentHintContent || !hintsEnabled) return;
       
       if (isHintVisible) {
-        // Hide hint
+        // Скрываем подсказку
         hud.style.transform = 'translateX(-100%)';
         hud.style.opacity = '0';
         isHintVisible = false;
       } else {
-        // Show hint
+        // Показываем подсказку
         hud.innerHTML = `
           <div style="font-weight: 600; margin-bottom: 4px;">${currentHintContent.modeLabel}</div>
           <div style="font-size: 12px; opacity: 0.8;">${currentHintContent.recommendation}</div>
@@ -665,19 +700,19 @@
     }
 
     function addHintClickHandler() {
-      // Remove existing handler if any
+      // Удаляем существующий обработчик, если есть
       removeHintClickHandler();
       
-      // Create new click handler for hint toggle
+      // Создаем новый обработчик клика для переключения подсказки
       hintClickHandler = function(event) {
-        // Only handle clicks during training phase (not during pause)
+        // Обрабатываем клики только во время тренировки (не во время паузы)
         if (phase === 'symbol') {
           event.stopPropagation();
           toggleHint();
         }
       };
       
-      // Add click listener to both the app and the HUD
+      // Добавляем обработчик клика как для приложения, так и для HUD
       app.addEventListener('click', hintClickHandler);
       hud.addEventListener('click', hintClickHandler);
     }
@@ -706,7 +741,7 @@
     }
 
     function playFocusSwitch(layerName) {
-      // Focus switch sound disabled - sound only used in noise mode
+      // Звук переключения фокуса отключён - звук используется только в шумовом режиме
       return;
     }
 
@@ -715,19 +750,19 @@
     function startContinuousNoise() {
       if (!audioCtx || !soundEnabled || continuousNoiseNodes) return;
       
-      // Create continuous white noise for noise mode
+      // Создаём непрерывный белый шум для шумового режима
       const noiseBuffer1 = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
       const noiseBuffer2 = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
       const noiseBuffer3 = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
       
-      // Generate white noise for all three layers
+      // Генерируем белый шум для всех трёх слоёв
       const noiseData1 = noiseBuffer1.getChannelData(0);
       const noiseData2 = noiseBuffer2.getChannelData(0);
       const noiseData3 = noiseBuffer3.getChannelData(0);
       for (let i = 0; i < noiseData1.length; i++) {
-        noiseData1[i] = (Math.random() * 2 - 1) * 0.3; // Back layer - quieter
-        noiseData2[i] = (Math.random() * 2 - 1) * 0.4; // Mid layer - medium
-        noiseData3[i] = (Math.random() * 2 - 1) * 0.2; // Front layer - quiet but crisp
+        noiseData1[i] = (Math.random() * 2 - 1) * 0.3; // Задний слой - тише
+        noiseData2[i] = (Math.random() * 2 - 1) * 0.4; // Средний слой - средняя громкость
+        noiseData3[i] = (Math.random() * 2 - 1) * 0.2; // Передний слой - тихий, но чёткий
       }
       
       const noiseSource1 = audioCtx.createBufferSource();
@@ -742,27 +777,27 @@
       noiseSource2.loop = true;
       noiseSource3.loop = true;
       
-      // Filters for each layer
+      // Фильтры для каждого слоя
       const filter1 = audioCtx.createBiquadFilter();
       const filter2 = audioCtx.createBiquadFilter();
       const filter3 = audioCtx.createBiquadFilter();
       
-      // Back layer - low frequency noise
+      // Задний слой - низкочастотный шум
       filter1.type = 'bandpass';
       filter1.frequency.value = 300;
       filter1.Q.value = 2;
       
-      // Mid layer - mid frequency noise
+      // Средний слой - среднечастотный шум
       filter2.type = 'bandpass';
       filter2.frequency.value = 1000;
       filter2.Q.value = 3;
       
-      // Front layer - high frequency noise
+      // Передний слой - высокочастотный шум
       filter3.type = 'highpass';
       filter3.frequency.value = 2000;
       filter3.Q.value = 4;
       
-      // Gain controls
+      // Регуляторы громкости
       const gain1 = audioCtx.createGain();
       const gain2 = audioCtx.createGain();
       const gain3 = audioCtx.createGain();
@@ -771,26 +806,26 @@
       gain2.gain.value = 0.12;
       gain3.gain.value = 0.08;
       
-      // Panning for spatial effect
+      // Панорамирование для создания пространственного эффекта
       const pan1 = audioCtx.createStereoPanner();
       const pan2 = audioCtx.createStereoPanner();
       const pan3 = audioCtx.createStereoPanner();
       
-      pan1.pan.value = -0.3; // Back layer - left
-      pan2.pan.value = 0;    // Mid layer - center
-      pan3.pan.value = 0.3;  // Front layer - right
+      pan1.pan.value = -0.3; // Задний слой - слева
+      pan2.pan.value = 0;    // Средний слой - по центру
+      pan3.pan.value = 0.3;  // Передний слой - справа
       
-      // Connect audio graph
+      // Подключаем аудио граф
       noiseSource1.connect(filter1).connect(gain1).connect(pan1).connect(masterGain);
       noiseSource2.connect(filter2).connect(gain2).connect(pan2).connect(masterGain);
       noiseSource3.connect(filter3).connect(gain3).connect(pan3).connect(masterGain);
       
-      // Start all noise sources
+      // Запускаем все источники шума
       noiseSource1.start();
       noiseSource2.start();
       noiseSource3.start();
       
-      // Store references for cleanup
+      // Сохраняем ссылки для очистки
       continuousNoiseNodes = {
         sources: [noiseSource1, noiseSource2, noiseSource3],
         gains: [gain1, gain2, gain3],
@@ -979,7 +1014,7 @@
     function mixedLangWord() {
       const ru = 'абвгдеёжзийклмнопрстуфхцчшщьыъэюя';
       const en = 'abcdefghijklmnopqrstuvwxyz';
-      const cn = '的一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政四日那社义事平形相全表间样与关各重新线内数正心反你明看原又么利比或但质气第向道命此变条只没结解问意建月公无系军很情者最立代想已通并提直题党程展五果料象员革位入常文总次品式活设及管特件长求老头基资边流路级少图山统接知较将组见计别她手角期根论运农指几九区强放决西被干做必战先回则任取据处队南给色光门即保治北造百规热领七海口东导器压志世金增争济阶油思术极交受联什认六共权收证改清己美再采转单风切打白教速花带安场身车例真务具万每目至达走积示议声报斗完类八离华名确才科张信马节话米整空元况今集温传土许步群广石记需段研界拉林律叫且究观越织装影算低持音众书布复容儿须际商非验连断深难近矿千周委素技备半办青省列习响约支般史感劳便团往酸历市克何除消构府称太准精值号率族维划选标写存候毛亲快效斯院查江型眼王按格养易置派层片始却专状育厂京识适属圆包火住调满县局照参红细备绿权码';
+      const cn = '的一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政四日那社义事平形相全表间样与关各重新线内数正心反你明看原又么利比或但质气第向道命此变条只没结解问意建月公无系军很情者最立代想已通并提直题党程展五果料象员革位入常文总次品式活设及管特件长求老头基资边流路级少图山统接知较将组见计别她手角期根论运农指几九区强放决西被干做必战先回则任取据处队南给色光门即保治北造百规热领七海口东导器压志世金增争济阶油思术极交受联什认六共权收证改清己美再采转单风切打白教速花带安场身车例真务具万每目至达走积示议声报斗完类八离华名确才科张信马节话米整空元况今集温传土许步群广石记需段研界拉林律叫且究观越织装影算低持音众书布复容儿须际商非验连断深难近矿千周委素技备半办青省列习响约支般史感劳便团往酸历市克何除消构府称太准精값号率族维划选标写存候毛亲快效斯院查江型眼王按格养易置派层片始却专状育厂京识适属圆包火住调满县局照参红细备绿权码';
       let arr = [];
       for (let i = 0; i < randInt(4, 8); i++) {
         arr.push(ru[randInt(0, ru.length)]);
@@ -999,15 +1034,15 @@
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); 
       
-      // Show cycle information
+      // Показываем информацию о цикле
       showCycleInfo('rain');
       
-      // Rain mode always uses white background
-      setTheme(false); // false = light theme (white background)
+      // Режим дождя всегда использует белый фон
+      setTheme(false); // false = светлая тема (белый фон)
       
-      // Rain mode is always dynamic (animated)
+      // Режим дождя всегда динамический (анимированный)
       
-      // Start continuous white noise for rain mode
+      // Запускаем непрерывный белый шум для режима дождя
       startContinuousNoise();
 
       const layersRoot = document.getElementById('layers');
@@ -1024,7 +1059,7 @@
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
       
-      // Clear existing canvases
+      // Очистка канв
       [back, mid, front].forEach(el => {
         if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
       });
@@ -1053,7 +1088,7 @@
       const isDark = document.documentElement.classList.contains('dark');
       const noiseColor = isDark ? 'white' : 'black';
       
-      // Generate dynamic noise patterns for each layer
+      // Генерируем динамические шумовые паттерны для каждого слоя
       function generateNoisePattern(ctx, density, dotSize) {
         ctx.clearRect(0, 0, vw, vh);
         ctx.fillStyle = noiseColor;
@@ -1070,16 +1105,16 @@
         }
       }
       
-      // Different noise characteristics for each layer - back to dots
+      // Различные характеристики шума для каждого слоя - возвращаемся к точкам
       const noiseConfigs = [
-        { density: 15, dotSize: 1.5 }, // back - fine dots
-        { density: 25, dotSize: 2.5 }, // mid - medium dots  
-        { density: 35, dotSize: 4.0 }  // front - large dots
+        { density: 15, dotSize: 1.5 }, // задний - мелкие точки
+        { density: 25, dotSize: 2.5 }, // средний - средние точки  
+        { density: 35, dotSize: 4.0 }  // передний - большие точки
       ];
       
       const layers = [layerBack, layerMid, layerFront];
       
-      // Animation function for dynamic rain effect
+      // Функция анимации для динамического эффекта дождя
       let running = true;
       function animateRain() {
         if (!running) return;
@@ -1089,8 +1124,8 @@
           generateNoisePattern(layer.ctx, config.density, config.dotSize);
         });
         
-        // Dynamic mode with continuous regeneration for organic movement
-        const delays = [100, 150, 200]; // Different update frequencies
+        // Динамический режим с непрерывной регенерацией для органичного движения
+        const delays = [100, 150, 200]; // Различные частоты обновления
         const delay = delays[Math.floor(Math.random() * delays.length)];
         
         setTimeout(() => {
@@ -1098,7 +1133,7 @@
         }, delay);
       }
       
-      // Start rain animation
+      // Запускаем анимацию дождя
       animateRain();
       
       function setFocus(target) {
@@ -1123,17 +1158,17 @@
       }
       setFocus('mid');
       
-      // Random focus switching - more chaotic than symbol mode, no consecutive repeats
+      // Случайное переключение фокуса - более хаотичное, чем в режиме символов, без последовательных повторов
       const focusNames = ['mid', 'back', 'front'];
-      const nSwitches = Math.max(3, Math.floor(durationMs / 2000)); // Switch every ~2 seconds
+      const nSwitches = Math.max(3, Math.floor(durationMs / 2000)); // Переключаем каждые ~2 секунды
       let lastFocus = 'mid';
       const switchTimers = [];
       for (let i = 0; i < nSwitches; i++) {
         let next;
         do {
           next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus); // Prevent consecutive same layer
-        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); // Add more randomness
+        } while (next === lastFocus); // Предотвращаем последовательные одинаковые слои
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); // Добавляем больше случайности
         switchTimers.push(setTimeout(() => setFocus(next), Math.max(0, at)));
         lastFocus = next;
       }
@@ -1150,7 +1185,7 @@
       const freezeLead = 2000;
       freezeTimer = setTimeout(() => { 
           running = false;
-          stopContinuousNoise(); // Stop continuous noise when rain mode ends
+          stopContinuousNoise(); // Останавливаем непрерывный шум при завершении режима дождя
       }, Math.max(0, durationMs));
       shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
       phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
@@ -1162,15 +1197,15 @@
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); 
       
-      // Show cycle information
+      // Показываем информацию о цикле
       showCycleInfo('stars');
       
-      // Stars mode always uses white background
-      setTheme(false); // false = light theme (white background)
+      // Режим звёзд всегда использует белый фон
+      setTheme(false); // false = светлая тема (белый фон)
       
-      // Stars mode is always static (no animation)
+      // Режим звёзд всегда статический (без анимации)
       
-      // Start continuous white noise for stars mode
+      // Запускаем непрерывный белый шум для режима звёзд
       startContinuousNoise();
 
       const layersRoot = document.getElementById('layers');
@@ -1187,7 +1222,7 @@
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
       
-      // Clear existing canvases
+      // Очистка канв
       [back, mid, front].forEach(el => {
         if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
       });
@@ -1216,7 +1251,7 @@
       const isDark = document.documentElement.classList.contains('dark');
       const noiseColor = isDark ? 'white' : 'black';
       
-      // Generate static star patterns for each layer
+      // Генерируем статичные звезды для каждого слоя
       function generateStarsPattern(ctx, density, dotSize) {
         ctx.clearRect(0, 0, vw, vh);
         ctx.fillStyle = noiseColor;
@@ -1233,16 +1268,16 @@
         }
       }
       
-      // Different star characteristics for each layer
+      // Характеристики звёзд для разных слоёв
       const starsConfigs = [
-        { density: 15, dotSize: 1.5 }, // back - fine dots
-        { density: 25, dotSize: 2.5 }, // mid - medium dots  
-        { density: 35, dotSize: 4.0 }  // front - large dots
+        { density: 15, dotSize: 1.5 }, // back - нормальные точки
+        { density: 25, dotSize: 2.5 }, // mid - средние точки
+        { density: 35, dotSize: 4.0 }  // front - большие точки
       ];
       
       const layers = [layerBack, layerMid, layerFront];
       
-      // Generate static stars pattern once
+      // Генерируем статичные звезды раз
       layers.forEach((layer, idx) => {
         const config = starsConfigs[idx];
         generateStarsPattern(layer.ctx, config.density, config.dotSize);
@@ -1255,7 +1290,6 @@
           if (key === target) {
             el.classList.add('focus');
             el.classList.remove('unfocus');
-            // Play sound exactly when focus is applied
             playFocusSwitch(target);
           } else {
             el.classList.add('unfocus');
@@ -1270,17 +1304,17 @@
       }
       setFocus('mid');
       
-      // Random focus switching - no consecutive repeats
+      // Случайное переключечние фокуса
       const focusNames = ['mid', 'back', 'front'];
-      const nSwitches = Math.max(3, Math.floor(durationMs / 2000)); // Switch every ~2 seconds
+      const nSwitches = Math.max(3, Math.floor(durationMs / 2000)); // Меняем каждые 2 секунды
       let lastFocus = 'mid';
       const switchTimers = [];
       for (let i = 0; i < nSwitches; i++) {
         let next;
         do {
           next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus); // Prevent consecutive same layer
-        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); // Add more randomness
+        } while (next === lastFocus); // Запрещаем на один слой дважды
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); 
         switchTimers.push(setTimeout(() => setFocus(next), Math.max(0, at)));
         lastFocus = next;
       }
@@ -1296,7 +1330,7 @@
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
       freezeTimer = setTimeout(() => { 
-          stopContinuousNoise(); // Stop continuous noise when stars mode ends
+          stopContinuousNoise(); 
       }, Math.max(0, durationMs));
       shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
       phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
@@ -1308,7 +1342,7 @@
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
 
-      // Show cycle information
+      // Показ информации о цикле
       showCycleInfo('words');
 
       const layersRoot = document.getElementById('layers');
@@ -1401,7 +1435,7 @@
         let next;
         do {
           next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus); // Prevent consecutive same layer
+        } while (next === lastFocus); // Запрещаем дважды на один слой
         const at = Math.floor((i + 1) * durationMs / (nSwitches + 1));
         switchTimers.push(setTimeout(() => setFocus(next), at));
         lastFocus = next;
@@ -1457,12 +1491,231 @@
       phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
     }
     
+    function renderEmojiMode(durationMs) {
+      const startTime = performance.now();
+      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
+      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
+      stopTicking(); clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
+
+      // Показываем информацию о цикле
+      showCycleInfo('emoji');
+
+      const layersRoot = document.getElementById('layers');
+      const back = document.getElementById('layerBack');
+      const mid = document.getElementById('layerMid');
+      const front = document.getElementById('layerFront');
+      [back, mid, front].forEach(el => { if (el) { el.innerHTML=''; el.classList.remove('focus','unfocus'); } });
+      if (layersRoot) {
+        layersRoot.style.opacity = '0';
+        layersRoot.style.transition = 'opacity 800ms ease';
+      }
+      requestAnimationFrame(() => { if (layersRoot) layersRoot.style.opacity = '1'; });
+      
+      const vw = Math.max(window.innerWidth, 320);
+      const vh = Math.max(window.innerHeight, 320);
+      
+      [back, mid, front].forEach(el => {
+        if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
+      });
+      
+      // Коллекции эмодзи для разнообразия
+      const emojiSets = [
+        ['🌸', '🌺', '🌼', '🌻', '🌷', '🌹', '🥀', '💐', '🌱', '🌿', '☘️', '🍀'],
+        ['🌵', '🌴', '🌳', '🌲', '🌾', '🍁', '🍂', '🍃', '🍄', '🌰', '🌍', '🌎'],
+        ['🌏', '🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘', '🌙', '🌚', '🌝'],
+        ['🌞', '⭐', '🌟', '✨', '⚡', '🔥', '💧', '🌊', '☂️', '🌈', '❄️', '☃️'],
+        ['⛄', '🌬️', '💨', '🌪️', '🌫️', '🌌', '🌃', '🌆', '🌇', '🌉', '🌁', '🏞️'],
+        ['🌅', '🌄', '🗻', '🏔️', '⛰️', '🌋', '🏝️', '🏜️', '🌐', '🪐', '🌠', '🌌'],
+        ['🎇', '🎆', '🕊️', '🦋', '🐚', '🪷', '🍇', '🍒', '🍓', '🍉', '🍊', '🍋'],
+        ['🍎', '🍏', '🍑', '🥭', '🍍', '🥥', '🥝', '🥑', '🌽', '🥦', '🥒', '🫘'],
+        ['🍵', '🍶', '🍺', '🍷', '🥂', '🍸', '🥤', '🧃', '🍫', '🍩', '🍪', '🍯'],
+        ['🕯️', '💡', '🔮', '🪞', '🎨', '🧩', '🎵', '🎶', '🎼', '📚', '🪄', '😺']
+      ];
+      
+      function getRandomEmoji() {
+        const randomSet = emojiSets[Math.floor(Math.random() * emojiSets.length)];
+        return randomSet[Math.floor(Math.random() * randomSet.length)];
+      }
+      
+      function createLayerCanvas(parent) {
+        const dpr = window.devicePixelRatio || 1;
+        // Разумное увеличение разрешения без превышения лимитов браузера
+        const superSampleFactor = dpr >= 3 ? 2 : (dpr >= 2 ? 1.5 : 1);
+        const effectiveDpr = dpr * superSampleFactor;
+        
+        const c = document.createElement('canvas');
+        c.width = vw * effectiveDpr;
+        c.height = vh * effectiveDpr;
+        c.style.position = 'absolute';
+        c.style.left = '0';
+        c.style.top = '0';
+        c.style.width = `${vw}px`;
+        c.style.height = `${vh}px`;
+        // Отключаем сглаживание на уровне CSS для максимальной четкости
+        c.style.imageRendering = 'pixelated';
+        c.style.imageRendering = '-moz-crisp-edges';
+        c.style.imageRendering = 'crisp-edges';
+        c.style.imageRendering = '-webkit-optimize-contrast';
+        c.style.imageRendering = '-webkit-crisp-edges';
+        // Максимально отключаем сглаживание шрифтов
+        c.style.webkitFontSmoothing = 'none';
+        c.style.mozOsxFontSmoothing = 'unset';
+        c.style.fontSmooth = 'never';
+        c.style.textRendering = 'optimizeSpeed';
+        // Дополнительные оптимизации для мобильных устройств
+        c.style.transformStyle = 'preserve-3d';
+        c.style.transform = 'translateZ(0)';
+        parent.appendChild(c);
+        
+        const ctx = c.getContext('2d', {
+          alpha: true,
+          desynchronized: true,
+          powerPreference: 'high-performance'
+        });
+        ctx.scale(effectiveDpr, effectiveDpr);
+        // Отключаем все виды сглаживания на уровне контекста
+        ctx.imageSmoothingEnabled = false;
+        if (ctx.textRenderingOptimization) {
+          ctx.textRenderingOptimization = 'optimizeSpeed';
+        }
+        // Пробуем отключить сглаживание для всех возможных типов
+        if (ctx.imageSmoothingQuality !== undefined) {
+          ctx.imageSmoothingQuality = 'low';
+        }
+        return c;
+      }
+      const canvBack = createLayerCanvas(back);
+      const canvMid = createLayerCanvas(mid);
+      const canvFront = createLayerCanvas(front);
+      const emojiSizes = {
+        back: 18,   
+        mid: 27,    
+        front: 54   
+      };
+      
+      let allEmojis = {
+        back: getRandomEmoji(),
+        mid: getRandomEmoji(),
+        front: getRandomEmoji()
+      };
+      
+      const canvases = { back: canvBack, mid: canvMid, front: canvFront };
+      const isDark = document.documentElement.classList.contains('dark');
+      
+      function drawEmoji(layer, emoji) {
+        const canvas = canvases[layer];
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        ctx.clearRect(0, 0, vw, vh); // Используем логические размеры, так как canvas уже масштабирован
+        
+        // Настройки для максимально четкого рендеринга
+        ctx.imageSmoothingEnabled = false; // Отключаем сглаживание
+        if (ctx.textRenderingOptimization) {
+          ctx.textRenderingOptimization = 'optimizeSpeed';
+        }
+        
+        // Дополнительные настройки для мобильных устройств с высоким DPR
+        if (ctx.imageSmoothingQuality) {
+          ctx.imageSmoothingQuality = 'high';
+        }
+        
+        // Упрощенное масштабирование для максимальной четкости
+        const baseFontSize = emojiSizes[layer];
+        // Простое увеличение на высоком DPR
+        const fontSize = dpr >= 2 ? baseFontSize * 1.5 : baseFontSize;
+        
+        // Используем лучшие системные шрифты для эмодзи
+        ctx.font = `${fontSize}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Android Emoji", EmojiSymbols, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Рисуем эмодзи в центре - один раз для максимальной четкости
+        const x = Math.round(vw / 2);
+        const y = Math.round(vh / 2);
+        ctx.fillText(emoji, x, y);
+      }
+      
+      // Initial draw
+      Object.keys(allEmojis).forEach(layer => {
+        drawEmoji(layer, allEmojis[layer]);
+      });
+      
+      function setFocus(target) {
+        playFocusSwitch(target);
+        const map = { back, mid, front };
+        Object.entries(map).forEach(([key, el]) => {
+          if (!el) return;
+          el.classList.toggle('focus', key === target);
+          el.classList.toggle('unfocus', key !== target);
+        });
+        const center = document.getElementById('center');
+        if (center) {
+          center.classList.toggle('focusViz', target === 'mid');
+          center.classList.toggle('unfocusViz', target !== 'mid');
+        }
+        
+        if (target === 'front') {
+          allEmojis = {
+            back: getRandomEmoji(),
+            mid: getRandomEmoji(),
+            front: getRandomEmoji()
+          };
+          
+          // Перерисовка эмодзи
+          Object.keys(allEmojis).forEach(layer => {
+            drawEmoji(layer, allEmojis[layer]);
+          });
+        }
+      }
+      setFocus('mid');
+      
+      const focusNames = ['mid', 'back', 'front'];
+      const nSwitches = Math.max(1, Math.floor(durationMs / 3000));
+      let lastFocus = 'mid';
+      const switchTimers = [];
+      for (let i = 0; i < nSwitches; i++) {
+        let next;
+        do {
+          next = focusNames[randInt(0, 3)];
+        } while (next === lastFocus); // Запрещаем дважды на один слой
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1));
+        switchTimers.push(setTimeout(() => setFocus(next), at));
+        lastFocus = next;
+      }
+      window._focusTimers.push(...switchTimers);
+      
+      const center = document.getElementById('center');
+      if (center) {
+        center.classList.remove('unfocusViz');
+        center.classList.add('focusViz');
+        center.innerHTML = ``;
+      }
+      
+      const shutters = document.getElementById('shutters');
+      const freezeLead = 2000;
+      const doFreeze = () => {
+        stopTicking();
+        clearFocusTimers();
+        
+        removeHintClickHandler();
+        
+        if (isHintVisible && currentHintContent) {
+          hud.style.transform = 'translateX(-100%)';
+          hud.style.opacity = '0';
+          isHintVisible = false;
+        }
+      };
+      freezeTimer = setTimeout(doFreeze, Math.max(0, durationMs));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+    }
+    
     function renderTargetMode(durationMs) {
       clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
 
-      // Show cycle information
+      // Показ информации о цикле
       showCycleInfo('target');
 
       const vw = Math.max(window.innerWidth, 320);
@@ -1550,8 +1803,7 @@
             focusableElements[index - 1].classList.remove('focus');
           }
           element.classList.add('focus');
-          // Play focus sound for target mode
-          playFocusSwitch('mid'); // Use 'mid' frequency range for target mode
+          playFocusSwitch('mid'); 
         }, index * FOCUS_SHIFT_INTERVAL);
         allTimers.push(focusTimer);
       });
@@ -1564,10 +1816,8 @@
         stopTicking();
         clearFocusTimers();
         
-        // Remove hint click handler when training ends
         removeHintClickHandler();
         
-        // Hide hint if visible
         if (isHintVisible && currentHintContent) {
           hud.style.transform = 'translateX(-100%)';
           hud.style.opacity = '0';
@@ -1585,7 +1835,7 @@
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD();
 
-      // Show cycle information
+      // Показ информации о цикле
       showCycleInfo('symbol');
 
       const flipTheme = pick(0.10);
@@ -1649,7 +1899,6 @@
         }
       }
       
-      // Set initial focus silently (without sound)
       const initialTarget = 'mid';
       const map = { back, mid, front };
       Object.entries(map).forEach(([key, el]) => {
@@ -1671,7 +1920,7 @@
         do {
           const r = Math.random();
           nextLayer = r < 0.33 ? 'mid' : (r < 0.66 ? 'back' : 'front');
-        } while (nextLayer === lastInPlan); // Prevent consecutive same layer
+        } while (nextLayer === lastInPlan); // Запрещаем на один слой дважды
         focusPlan.push(nextLayer);
       }
       let spent = 0;
@@ -1700,10 +1949,8 @@
         stopTicking();
         clearFocusTimers();
         
-        // Remove hint click handler when training ends
         removeHintClickHandler();
         
-        // Hide hint if visible
         if (isHintVisible && currentHintContent) {
           hud.style.transform = 'translateX(-100%)';
           hud.style.opacity = '0';
@@ -1736,6 +1983,7 @@
       if (document.getElementById('modeSymbol').checked) availableModes.push('symbol');
       if (document.getElementById('modeTarget').checked) availableModes.push('target');
       if (document.getElementById('modeWords').checked) availableModes.push('words');
+      if (document.getElementById('modeEmoji').checked) availableModes.push('emoji');
       if (document.getElementById('modeRain').checked) availableModes.push('rain');
       if (document.getElementById('modeStars').checked) availableModes.push('stars');
       
@@ -1751,6 +1999,8 @@
         renderTargetMode(showMs);
       } else if (selectedMode === 'words') {
         renderWordsMode(showMs);
+      } else if (selectedMode === 'emoji') {
+        renderEmojiMode(showMs);
       } else if (selectedMode === 'rain') {
         renderRainMode(showMs);
       } else if (selectedMode === 'stars') {
@@ -1764,7 +2014,7 @@
       phase = 'pause';
       updateHUD();
       stopTicking();
-      stopContinuousNoise(); // Stop any continuous noise
+      stopContinuousNoise(); 
       setTheme(true);
       clearSymbol();
       clearLayers();
@@ -1773,10 +2023,8 @@
       clearCounterTimer();
       clearAutoContinueTimer();
       
-      // Remove hint click handler during pause
       removeHintClickHandler();
       
-      // Hide hint if visible
       if (isHintVisible && currentHintContent) {
         hud.style.transform = 'translateX(-100%)';
         hud.style.opacity = '0';
@@ -1824,7 +2072,7 @@
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
         
-        // Add click event listener for the back to start button
+        // Ждем клик на кнопке перезапуска
         const backToStartBtn = document.getElementById('backToStartBtn');
         if (backToStartBtn) {
           backToStartBtn.addEventListener('click', (e) => {
@@ -1833,7 +2081,7 @@
           });
         }
         
-        // Add event listener for auto-continue checkbox
+        // Ждём клика по чекбоксу автоматического перезапуска
         const autoContinueCheckbox = document.getElementById('autoContinueCheckbox');
         if (autoContinueCheckbox) {
           autoContinueCheckbox.addEventListener('change', (e) => {
@@ -1841,7 +2089,6 @@
             autoContinueEnabled = autoContinueCheckbox.checked;
             savePreferences();
             
-            // Show/hide continue hint based on checkbox state
             const continueHint = document.getElementById('continueHint');
             if (continueHint) {
               continueHint.style.display = autoContinueEnabled ? 'none' : 'block';
@@ -1856,7 +2103,7 @@
           });
         }
         
-        // Start countdown if auto-continue is enabled
+        // Запуск отсчёта
         if (autoContinueEnabled) {
           startAutoContinueCountdown();
         }
@@ -1870,7 +2117,7 @@
           event.stopPropagation();
         }
         if(phase === 'pause') {
-            // Stop auto-continue timer if running
+            // Остановка таймера
             stopAutoContinueCountdown();
             showSymbol();
         }
@@ -1919,17 +2166,18 @@
         document.getElementById('modeSymbol'),
         document.getElementById('modeTarget'),
         document.getElementById('modeWords'),
+        document.getElementById('modeEmoji'),
         document.getElementById('modeRain'),
         document.getElementById('modeStars')
       ];
 
-      // Load saved preferences first
+      // Загружаем настройки из localStorage
       loadPreferences();
       
-      // Set version display
+      // Показ версии
       updateVersionDisplay();
 
-      // Language switcher functionality
+      // Переключение языка
       languageRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
           if (e.target.checked) {
