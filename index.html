@@ -222,6 +222,19 @@
       }
     }
     
+    /* Back to start button styling */
+    #backToStartBtn {
+      font-family: inherit;
+    }
+    
+    @media (max-width: 600px) {
+      #backToStartBtn {
+        font-size: 12px !important;
+        padding: 10px 20px !important;
+        bottom: 5% !important;
+      }
+    }
+    
     .centerOverlay {
       position: fixed;
       inset: 0;
@@ -1669,14 +1682,41 @@
       if (center) {
         const restText = currentLanguage === 'ru' ? 'Отдых...' : 'Rest...';
         const continueText = currentLanguage === 'ru' ? 'Нажмите для продолжения' : 'Click to continue';
+        const backToStartText = currentLanguage === 'ru' ? 'В начало' : 'Back to Start';
         center.innerHTML = `
           <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
             <div class="title large pulse-large">${restText}</div>
           </div>
           <small style="position: absolute; bottom: 30%; left: 0; right: 0; font-size: 16px; opacity: 0.7;">${continueText}</small>
+          <button id="backToStartBtn" style="
+            position: absolute;
+            bottom: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            pointer-events: auto;
+          " onmouseover="this.style.transform='translateX(-50%) translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)'" onmouseout="this.style.transform='translateX(-50%) translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.3)'">${backToStartText}</button>
         `;
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
+        
+        // Add click event listener for the back to start button
+        const backToStartBtn = document.getElementById('backToStartBtn');
+        if (backToStartBtn) {
+          backToStartBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.location.reload();
+          });
+        }
       }
 
       app.addEventListener('click', proceedToNextCycle, { once: true });
