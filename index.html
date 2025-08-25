@@ -426,6 +426,49 @@
       hud.style.opacity = phase === 'symbol' ? 0.9 : 0.6;
     }
 
+    function showCycleInfo(modeName) {
+      const modeNames = {
+        'symbol': { ru: 'Символы', en: 'Symbols' },
+        'target': { ru: 'Мишень', en: 'Target' },
+        'words': { ru: 'Слова', en: 'Words' },
+        'rain': { ru: 'Дождь', en: 'Rain' },
+        'stars': { ru: 'Звёзды', en: 'Stars' }
+      };
+      
+      const modeTitle = modeNames[modeName] ? modeNames[modeName][currentLanguage] : modeName;
+      const modeLabel = currentLanguage === 'ru' ? `Режим «${modeTitle}»` : `Mode «${modeTitle}»`;
+      const recommendation = currentLanguage === 'ru' 
+        ? 'Концентрируйся на резких деталях'
+        : 'Focus on sharp details';
+      
+      // Set HUD content and initial state
+      hud.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 4px;">${modeLabel}</div>
+        <div style="font-size: 12px; opacity: 0.8;">${recommendation}</div>
+      `;
+      
+      // Set initial HUD animation state
+      hud.style.opacity = '0';
+      hud.style.transform = 'translateX(0)';
+      hud.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+      
+      // Fade in
+      requestAnimationFrame(() => {
+        hud.style.opacity = '0.9';
+      });
+      
+      // Slide out left after 5 seconds
+      setTimeout(() => {
+        hud.style.transform = 'translateX(-100%)';
+        hud.style.opacity = '0';
+        setTimeout(() => {
+          hud.innerHTML = '';
+          hud.style.transform = '';
+          hud.style.transition = '';
+        }, 800); // Wait for slide out transition
+      }, 5000);
+    }
+
     function playTick() {
       if (!audioCtx || !soundEnabled || phase !== 'symbol') return;
       const now = audioCtx.currentTime;
@@ -734,6 +777,9 @@
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); 
       
+      // Show cycle information
+      showCycleInfo('rain');
+      
       // Rain mode always uses white background
       setTheme(false); // false = light theme (white background)
       
@@ -894,6 +940,9 @@
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); 
       
+      // Show cycle information
+      showCycleInfo('stars');
+      
       // Stars mode always uses white background
       setTheme(false); // false = light theme (white background)
       
@@ -1036,6 +1085,9 @@
       clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
+
+      // Show cycle information
+      showCycleInfo('words');
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -1188,6 +1240,9 @@
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
 
+      // Show cycle information
+      showCycleInfo('target');
+
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
       const cx = vw / 2;
@@ -1297,6 +1352,9 @@
       clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
       clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
       stopTicking(); clearSymbol(); updateHUD();
+
+      // Show cycle information
+      showCycleInfo('symbol');
 
       const flipTheme = pick(0.10);
       setTheme(flipTheme);
