@@ -185,7 +185,7 @@
       align-items: center;
       gap: 8px;
     }
-    #intro-settings input[type="checkbox"], #soundCheckbox {
+    #intro-settings input[type="checkbox"], #soundCheckbox, #hintsCheckbox {
       width: 18px;
       height: 18px;
     }
@@ -290,6 +290,10 @@
         <input type="checkbox" id="soundCheckbox">
         <span data-ru="Включить звук" data-en="Enable sound">Включить звук</span>
       </label>
+      <label id="hints-toggle" style="font-size: 16px; font-weight: 500;">
+        <input type="checkbox" id="hintsCheckbox" checked>
+        <span data-ru="Показывать подсказки" data-en="Show hints">Показывать подсказки</span>
+      </label>
       <small data-ru="Выбранные режимы будут переключаться" data-en="Selected modes will switch">Выбранные режимы будут переключаться</small>
       <small><a href="https://t.me/psylachi" target="_blank" rel="noopener">https://t.me/psylachi</a></small>
     </div>
@@ -321,6 +325,7 @@
     let currentDrawMs = 0;
     let wakeLock = null;
     let soundEnabled = false; 
+    let hintsEnabled = true; 
 
     let phase = 'pause';
     let symbolWrapper = null;
@@ -332,6 +337,7 @@
       const preferences = {
         language: currentLanguage,
         soundEnabled: soundEnabled,
+        hintsEnabled: hintsEnabled,
         modes: {
           symbol: document.getElementById('modeSymbol').checked,
           target: document.getElementById('modeTarget').checked,
@@ -367,6 +373,15 @@
               if (soundEnabled && !audioCtx) {
                 initAudio();
               }
+            }
+          }
+          
+          // Load hints setting
+          if (typeof preferences.hintsEnabled === 'boolean') {
+            hintsEnabled = preferences.hintsEnabled;
+            const hintsCheckbox = document.getElementById('hintsCheckbox');
+            if (hintsCheckbox) {
+              hintsCheckbox.checked = hintsEnabled;
             }
           }
           
@@ -426,7 +441,16 @@
       hud.style.opacity = phase === 'symbol' ? 0.9 : 0.6;
     }
 
+    let currentHintContent = null;
+    let isHintVisible = false;
+    let hintClickHandler = null;
+
     function showCycleInfo(modeName) {
+      // Check if hints are enabled
+      if (!hintsEnabled) {
+        return;
+      }
+      
       const modeNames = {
         'symbol': { ru: 'Символы', en: 'Symbols' },
         'target': { ru: 'Мишень', en: 'Target' },
@@ -440,6 +464,12 @@
       const recommendation = currentLanguage === 'ru' 
         ? 'Концентрируйся на резких деталях'
         : 'Focus on sharp details';
+      
+      // Store hint content for later use
+      currentHintContent = {
+        modeLabel,
+        recommendation
+      };
       
       // Set HUD content and initial state
       hud.innerHTML = `
@@ -455,18 +485,57 @@
       // Fade in
       requestAnimationFrame(() => {
         hud.style.opacity = '0.9';
+        isHintVisible = true;
+        
+        // Add click handler for hint toggle during training
+        addHintClickHandler();
       });
+    }
+
+    function toggleHint() {
+      if (!currentHintContent || !hintsEnabled) return;
       
-      // Slide out left after 5 seconds
-      setTimeout(() => {
+      if (isHintVisible) {
+        // Hide hint
         hud.style.transform = 'translateX(-100%)';
         hud.style.opacity = '0';
-        setTimeout(() => {
-          hud.innerHTML = '';
-          hud.style.transform = '';
-          hud.style.transition = '';
-        }, 800); // Wait for slide out transition
-      }, 5000);
+        isHintVisible = false;
+      } else {
+        // Show hint
+        hud.innerHTML = `
+          <div style="font-weight: 600; margin-bottom: 4px;">${currentHintContent.modeLabel}</div>
+          <div style="font-size: 12px; opacity: 0.8;">${currentHintContent.recommendation}</div>
+        `;
+        hud.style.transform = 'translateX(0)';
+        hud.style.opacity = '0.9';
+        isHintVisible = true;
+      }
+    }
+
+    function addHintClickHandler() {
+      // Remove existing handler if any
+      removeHintClickHandler();
+      
+      // Create new click handler for hint toggle
+      hintClickHandler = function(event) {
+        // Only handle clicks during training phase (not during pause)
+        if (phase === 'symbol') {
+          event.stopPropagation();
+          toggleHint();
+        }
+      };
+      
+      // Add click listener to both the app and the HUD
+      app.addEventListener('click', hintClickHandler);
+      hud.addEventListener('click', hintClickHandler);
+    }
+
+    function removeHintClickHandler() {
+      if (hintClickHandler) {
+        app.removeEventListener('click', hintClickHandler);
+        hud.removeEventListener('click', hintClickHandler);
+        hintClickHandler = null;
+      }
     }
 
     function playTick() {
@@ -1341,6 +1410,16 @@
       const doFreeze = () => {
         stopTicking();
         clearFocusTimers();
+        
+        // Remove hint click handler when training ends
+        removeHintClickHandler();
+        
+        // Hide hint if visible
+        if (isHintVisible && currentHintContent) {
+          hud.style.transform = 'translateX(-100%)';
+          hud.style.opacity = '0';
+          isHintVisible = false;
+        }
       };
       freezeTimer = setTimeout(doFreeze, Math.max(0, totalDuration));
       shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, totalDuration + freezeLead));
@@ -1467,6 +1546,16 @@
       const doFreeze = () => {
         stopTicking();
         clearFocusTimers();
+        
+        // Remove hint click handler when training ends
+        removeHintClickHandler();
+        
+        // Hide hint if visible
+        if (isHintVisible && currentHintContent) {
+          hud.style.transform = 'translateX(-100%)';
+          hud.style.opacity = '0';
+          isHintVisible = false;
+        }
       };
       freezeTimer = setTimeout(doFreeze, Math.max(0, durationMs));
       shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
@@ -1529,6 +1618,16 @@
       clearPhaseTimer();
       clearFreezeTimer();
       clearCounterTimer();
+      
+      // Remove hint click handler during pause
+      removeHintClickHandler();
+      
+      // Hide hint if visible
+      if (isHintVisible && currentHintContent) {
+        hud.style.transform = 'translateX(-100%)';
+        hud.style.opacity = '0';
+        isHintVisible = false;
+      }
 
       const center = document.getElementById('center');
       if (center) {
@@ -1593,6 +1692,7 @@
     function initIntroScreen() {
       const startButton = document.getElementById('startButton');
       const soundCheckbox = document.getElementById('soundCheckbox');
+      const hintsCheckbox = document.getElementById('hintsCheckbox');
       const languageRadios = document.querySelectorAll('input[name="language"]');
       const checkboxes = [
         document.getElementById('modeSymbol'),
@@ -1634,6 +1734,11 @@
             initAudio();
         }
         updateHUD();
+        savePreferences();
+      });
+      
+      hintsCheckbox.addEventListener('change', () => {
+        hintsEnabled = hintsCheckbox.checked;
         savePreferences();
       });
       
