@@ -238,6 +238,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## Support / Поддержка
 
-For questions or support, please visit: [https://t.me/psylachi](https://t.me/psylachi)
+For questions or support, please visit: [https://t.me/glaz_reg](https://t.me/glaz_reg)
 
-По вопросам или поддержке, пожалуйста, посетите: [https://t.me/psylachi](https://t.me/psylachi)
+
+По вопросам или поддержке, пожалуйста, посетите: [https://t.me/glaz_reg](https://t.me/glaz_reg)
