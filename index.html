@@ -206,6 +206,22 @@
     .intro a { color: #dddddd; text-decoration: none; pointer-events: auto; opacity: 0.8; }
     .intro a:hover { text-decoration: underline; opacity: 1; }
     
+    /* Version number styling */
+    #version-number {
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
+    }
+    
+    /* Responsive adjustments for version number */
+    @media (max-width: 480px) {
+      #version-number {
+        font-size: 8px !important;
+        bottom: -6px !important;
+        right: -8px !important;
+      }
+    }
+    
     .centerOverlay {
       position: fixed;
       inset: 0;
@@ -273,7 +289,14 @@
   <div class="muteBadge" id="mute"></div>
   <div class="intro" id="intro">
     <div class="intro-content">
-      <div id="intro-title" style="line-height: 1.1;">GLAZ<br><small style="font-size: clamp(14px, 3vw, 22px); opacity: 0.8;" data-ru="Тренажёр для глаз" data-en="Eye Trainer">Тренажёр для глаз</small></div>
+      <div id="intro-title" style="line-height: 1.1;">
+        <div style="position: relative; display: inline-block;">
+          GLAZ
+          <span id="version-number" style="position: absolute; bottom: -8px; right: -12px; font-size: 10px; opacity: 0.4; font-weight: 400;"></span>
+        </div>
+        <br>
+        <small style="font-size: clamp(14px, 3vw, 22px); opacity: 0.8;" data-ru="Тренажёр для глаз" data-en="Eye Trainer">Тренажёр для глаз</small>
+      </div>
       <div id="intro-settings">
           <label><input type="checkbox" id="modeSymbol" value="symbol" checked><span data-ru="Символы" data-en="Symbols">Символы</span></label>
           <label><input type="checkbox" id="modeTarget" value="target" checked><span data-ru="Мишень" data-en="Target">Мишень</span></label>
@@ -308,6 +331,11 @@
 
   <script>
   (function() {
+    // *** VERSION CONFIGURATION ***
+    // Easily changeable version number displayed on start screen
+    const APP_VERSION = 'v1.1.3';
+    // *** END VERSION CONFIGURATION ***
+    
     const app = document.getElementById('app');
     const hud = document.getElementById('hud');
     const mute = document.getElementById('mute');
@@ -409,6 +437,14 @@
         }
       });
       savePreferences();
+    }
+
+    // Version display functionality
+    function updateVersionDisplay() {
+      const versionElement = document.getElementById('version-number');
+      if (versionElement) {
+        versionElement.textContent = APP_VERSION;
+      }
     }
 
     function rand(min, max) { return Math.random() * (max - min) + min; }
@@ -1704,6 +1740,9 @@
 
       // Load saved preferences first
       loadPreferences();
+      
+      // Set version display
+      updateVersionDisplay();
 
       // Language switcher functionality
       languageRadios.forEach(radio => {
