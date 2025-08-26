@@ -362,6 +362,80 @@
     .focusViz { filter: blur(0px); opacity: 1; transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out; }
     .unfocusViz { filter: blur(7px); opacity: 0.85; transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out; }
     .hiddenSoft { opacity: 0 !important; animation: none !important; transition: opacity 3000ms ease-in-out !important; }
+    
+    /* Стили для меню паузы */
+    #pauseOverlay {
+      position: fixed;
+      inset: 0;
+      display: none; /* Изначально скрыто */
+      place-items: center;
+      background-color: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      color: white;
+      text-align: center;
+    }
+    .pause-modal {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 30px;
+    }
+    .pause-modal h2 {
+      margin: 0;
+      font-size: clamp(32px, 6vw, 48px);
+      font-weight: 700;
+    }
+    .pause-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .pause-actions button {
+      font-family: inherit;
+      font-size: clamp(16px, 3vw, 20px);
+      font-weight: 600;
+      color: #000;
+      background-color: #eee;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+    .pause-actions button:hover {
+      background-color: #fff;
+    }
+    .pause-actions button:active {
+      transform: scale(0.98);
+    }
+    
+    /* Стили для кнопки паузы */
+    #pauseBtn {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      width: 44px;
+      height: 44px;
+      background-color: rgba(128, 128, 128, 0.15);
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 1500;
+      display: none; /* Скрыто по-умолчанию */
+      place-items: center;
+      padding: 10px;
+      transition: background-color 0.2s ease, opacity 0.2s ease;
+      opacity: 0.5;
+    }
+    #pauseBtn:hover {
+      background-color: rgba(128, 128, 128, 0.3);
+      opacity: 1;
+    }
+    #pauseBtn svg {
+      width: 100%;
+      height: 100%;
+      fill: var(--fg); /* Адаптивный цвет иконки */
+    }
   </style>
 </head>
 <body>
@@ -410,17 +484,26 @@
     <div class="layer" id="layerFront"></div>
   </div>
   <div class="shutters" id="shutters"><div class="top"></div><div class="bottom"></div></div>
+  <div id="pauseOverlay"></div>
+  <div id="pauseBtn" title="Pause">
+    <svg viewBox="0 0 100 100">
+      <rect x="25" y="25" width="15" height="50" rx="5"></rect>
+      <rect x="60" y="25" width="15" height="50" rx="5"></rect>
+    </svg>
+  </div>
 
   <script>
   (function() {
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
-    const APP_VERSION = 'v1.2.0';
+    const APP_VERSION = 'v1.2.1';
     // *** КОНЕЦ КОНФИГУРАЦИИ ВЕРСИИ ***
     
     const app = document.getElementById('app');
     const hud = document.getElementById('hud');
     const mute = document.getElementById('mute');
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    const pauseButton = document.getElementById('pauseBtn');
 
     let audioCtx = null;
     let masterGain = null;
@@ -436,7 +519,11 @@
     let wakeLock = null;
     let soundEnabled = false; 
     let hintsEnabled = true;
-    let autoContinueEnabled = false; 
+    let autoContinueEnabled = false;
+    let animationRunning = false;
+    
+    let isPaused = false;
+    let remainingDurationOnPause = 0;
 
     let phase = 'pause';
     let symbolWrapper = null;
@@ -734,7 +821,7 @@
       osc.frequency.setValueAtTime(980 + Math.random()*40, now);
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
+      gain.gain.exponentialRmpToValueAtTime(0.0001, now + 0.10);
       osc.connect(gain).connect(masterGain);
       osc.start(now);
       osc.stop(now + 0.12);
@@ -868,6 +955,90 @@
     function clearCounterTimer() { if (counterTimer) { clearInterval(counterTimer); counterTimer = null; } }
     function clearFlickerTimer() { if (flickerTimer) { clearTimeout(flickerTimer); flickerTimer = null; } }
     function clearAutoContinueTimer() { if (autoContinueTimer) { clearInterval(autoContinueTimer); autoContinueTimer = null; } }
+
+    function clearAllTimersAndLoops() {
+        clearPhaseTimer();
+        clearFreezeTimer();
+        clearShutterTimer();
+        clearCounterTimer();
+        clearFlickerTimer();
+        clearAutoContinueTimer();
+        clearFocusTimers();
+        clearCounterVisTimers();
+        stopTicking();
+        stopContinuousNoise();
+        animationRunning = false;
+    }
+    
+    pauseButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        enterPause();
+    });
+
+    function enterPause() {
+        if (isPaused || phase !== 'symbol') return;
+        isPaused = true;
+        pauseButton.style.display = 'none';
+        
+        remainingDurationOnPause = phaseEndAt - performance.now();
+        if (remainingDurationOnPause < 0) remainingDurationOnPause = 0;
+        
+        clearAllTimersAndLoops();
+
+        const texts = {
+            ru: {
+                title: 'Пауза',
+                continue: 'Продолжить',
+                next: 'Следующий режим',
+                menu: 'В меню'
+            },
+            en: {
+                title: 'Pause',
+                continue: 'Continue',
+                next: 'Next Mode',
+                menu: 'To Menu'
+            }
+        };
+        const langTexts = texts[currentLanguage];
+
+        pauseOverlay.innerHTML = `
+            <div class="pause-modal">
+                <h2>${langTexts.title}</h2>
+                <div class="pause-actions">
+                    <button id="resumeBtn">${langTexts.continue}</button>
+                    <button id="nextModeBtn">${langTexts.next}</button>
+                    <button id="toMenuBtn">${langTexts.menu}</button>
+                </div>
+            </div>
+        `;
+        pauseOverlay.style.display = 'grid';
+
+        document.getElementById('resumeBtn').addEventListener('click', exitPause);
+        document.getElementById('nextModeBtn').addEventListener('click', () => {
+            pauseOverlay.style.display = 'none';
+            isPaused = false;
+            showSymbol();
+        });
+        document.getElementById('toMenuBtn').addEventListener('click', () => window.location.reload());
+    }
+
+    function exitPause() {
+        if (!isPaused) return;
+        isPaused = false;
+        pauseOverlay.style.display = 'none';
+        pauseButton.style.display = 'grid';
+        
+        // Возобновляем текущий режим с оставшимся временем
+        switch (lastSelectedMode) {
+            case 'symbol': renderSymbolFor(remainingDurationOnPause); break;
+            case 'target': renderTargetMode(remainingDurationOnPause); break;
+            case 'words': renderWordsMode(remainingDurationOnPause); break;
+            case 'emoji': renderEmojiMode(remainingDurationOnPause); break;
+            case 'rain': renderRainMode(remainingDurationOnPause); break;
+            case 'stars': renderStarsMode(remainingDurationOnPause); break;
+            default: startPause(); // Если что-то пошло не так
+        }
+    }
 
     function clearFocusTimers() {
       if (window._focusTimers && Array.isArray(window._focusTimers)) {
@@ -1029,21 +1200,17 @@
     }
 
     function renderRainMode(durationMs) {
-      const startTime = performance.now();
-      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
-      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
-      stopTicking(); clearSymbol(); updateHUD(); 
+      clearAllTimersAndLoops();
+      phaseEndAt = performance.now() + durationMs + 2000 + 2000;
+      clearSymbol(); updateHUD(); 
       
       // Показываем информацию о цикле
       showCycleInfo('rain');
       
-      // Режим дождя всегда использует белый фон
-      setTheme(false); // false = светлая тема (белый фон)
-      
-      // Режим дождя всегда динамический (анимированный)
-      
-      // Запускаем непрерывный белый шум для режима дождя
+      setTheme(false);
       startContinuousNoise();
+      animationRunning = true;
+      pauseButton.style.display = 'grid';
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -1059,7 +1226,6 @@
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
       
-      // Очистка канв
       [back, mid, front].forEach(el => {
         if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
       });
@@ -1088,7 +1254,6 @@
       const isDark = document.documentElement.classList.contains('dark');
       const noiseColor = isDark ? 'white' : 'black';
       
-      // Генерируем динамические шумовые паттерны для каждого слоя
       function generateNoisePattern(ctx, density, dotSize) {
         ctx.clearRect(0, 0, vw, vh);
         ctx.fillStyle = noiseColor;
@@ -1105,27 +1270,23 @@
         }
       }
       
-      // Различные характеристики шума для каждого слоя - возвращаемся к точкам
       const noiseConfigs = [
-        { density: 15, dotSize: 1.5 }, // задний - мелкие точки
-        { density: 25, dotSize: 2.5 }, // средний - средние точки  
-        { density: 35, dotSize: 4.0 }  // передний - большие точки
+        { density: 15, dotSize: 1.5 },
+        { density: 25, dotSize: 2.5 },
+        { density: 35, dotSize: 4.0 }
       ];
       
       const layers = [layerBack, layerMid, layerFront];
       
-      // Функция анимации для динамического эффекта дождя
-      let running = true;
       function animateRain() {
-        if (!running) return;
+        if (!animationRunning) return;
         
         layers.forEach((layer, idx) => {
           const config = noiseConfigs[idx];
           generateNoisePattern(layer.ctx, config.density, config.dotSize);
         });
         
-        // Динамический режим с непрерывной регенерацией для органичного движения
-        const delays = [100, 150, 200]; // Различные частоты обновления
+        const delays = [100, 150, 200];
         const delay = delays[Math.floor(Math.random() * delays.length)];
         
         setTimeout(() => {
@@ -1133,7 +1294,6 @@
         }, delay);
       }
       
-      // Запускаем анимацию дождя
       animateRain();
       
       function setFocus(target) {
@@ -1143,7 +1303,6 @@
           if (key === target) {
             el.classList.add('focus');
             el.classList.remove('unfocus');
-            // Play sound exactly when focus is applied
             playFocusSwitch(target);
           } else {
             el.classList.add('unfocus');
@@ -1158,17 +1317,16 @@
       }
       setFocus('mid');
       
-      // Случайное переключение фокуса - более хаотичное, чем в режиме символов, без последовательных повторов
       const focusNames = ['mid', 'back', 'front'];
-      const nSwitches = Math.max(3, Math.floor(durationMs / 2000)); // Переключаем каждые ~2 секунды
+      const nSwitches = Math.max(3, Math.floor(durationMs / 2000));
       let lastFocus = 'mid';
       const switchTimers = [];
       for (let i = 0; i < nSwitches; i++) {
         let next;
         do {
           next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus); // Предотвращаем последовательные одинаковые слои
-        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); // Добавляем больше случайности
+        } while (next === lastFocus);
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800);
         switchTimers.push(setTimeout(() => setFocus(next), Math.max(0, at)));
         lastFocus = next;
       }
@@ -1184,29 +1342,22 @@
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
       freezeTimer = setTimeout(() => { 
-          running = false;
-          stopContinuousNoise(); // Останавливаем непрерывный шум при завершении режима дождя
+          animationRunning = false;
+          stopContinuousNoise();
       }, Math.max(0, durationMs));
       shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
       phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
     }
 
     function renderStarsMode(durationMs) {
-      const startTime = performance.now();
-      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
-      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
-      stopTicking(); clearSymbol(); updateHUD(); 
+      clearAllTimersAndLoops();
+      phaseEndAt = performance.now() + durationMs + 2000 + 2000;
+      clearSymbol(); updateHUD(); 
       
-      // Показываем информацию о цикле
       showCycleInfo('stars');
-      
-      // Режим звёзд всегда использует белый фон
-      setTheme(false); // false = светлая тема (белый фон)
-      
-      // Режим звёзд всегда статический (без анимации)
-      
-      // Запускаем непрерывный белый шум для режима звёзд
+      setTheme(false);
       startContinuousNoise();
+      pauseButton.style.display = 'grid';
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -1222,7 +1373,6 @@
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
       
-      // Очистка канв
       [back, mid, front].forEach(el => {
         if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
       });
@@ -1251,7 +1401,6 @@
       const isDark = document.documentElement.classList.contains('dark');
       const noiseColor = isDark ? 'white' : 'black';
       
-      // Генерируем статичные звезды для каждого слоя
       function generateStarsPattern(ctx, density, dotSize) {
         ctx.clearRect(0, 0, vw, vh);
         ctx.fillStyle = noiseColor;
@@ -1268,16 +1417,14 @@
         }
       }
       
-      // Характеристики звёзд для разных слоёв
       const starsConfigs = [
-        { density: 15, dotSize: 1.5 }, // back - нормальные точки
-        { density: 25, dotSize: 2.5 }, // mid - средние точки
-        { density: 35, dotSize: 4.0 }  // front - большие точки
+        { density: 15, dotSize: 1.5 },
+        { density: 25, dotSize: 2.5 },
+        { density: 35, dotSize: 4.0 }
       ];
       
       const layers = [layerBack, layerMid, layerFront];
       
-      // Генерируем статичные звезды раз
       layers.forEach((layer, idx) => {
         const config = starsConfigs[idx];
         generateStarsPattern(layer.ctx, config.density, config.dotSize);
@@ -1304,16 +1451,15 @@
       }
       setFocus('mid');
       
-      // Случайное переключечние фокуса
       const focusNames = ['mid', 'back', 'front'];
-      const nSwitches = Math.max(3, Math.floor(durationMs / 2000)); // Меняем каждые 2 секунды
+      const nSwitches = Math.max(3, Math.floor(durationMs / 2000));
       let lastFocus = 'mid';
       const switchTimers = [];
       for (let i = 0; i < nSwitches; i++) {
         let next;
         do {
           next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus); // Запрещаем на один слой дважды
+        } while (next === lastFocus);
         const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); 
         switchTimers.push(setTimeout(() => setFocus(next), Math.max(0, at)));
         lastFocus = next;
@@ -1338,12 +1484,13 @@
 
     function renderWordsMode(durationMs) {
       const startTime = performance.now();
-      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
-      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
-      stopTicking(); clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
+      clearAllTimersAndLoops();
+      phaseEndAt = performance.now() + durationMs + 2000 + 2000;
+      clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
 
-      // Показ информации о цикле
       showCycleInfo('words');
+      animationRunning = true;
+      pauseButton.style.display = 'grid';
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -1435,14 +1582,13 @@
         let next;
         do {
           next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus); // Запрещаем дважды на один слой
+        } while (next === lastFocus);
         const at = Math.floor((i + 1) * durationMs / (nSwitches + 1));
         switchTimers.push(setTimeout(() => setFocus(next), at));
         lastFocus = next;
       }
       window._focusTimers.push(...switchTimers);
       
-      let running = true;
       function drawWords(ctx, words, now) {
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1463,7 +1609,7 @@
         });
       }
       function animate() {
-        if (!running) return;
+        if (!animationRunning) return;
         const now = performance.now();
         drawWords(canvBack.getContext('2d'), wordsByLayer.back, now);
         drawWords(canvMid.getContext('2d'), wordsByLayer.mid, now);
@@ -1478,13 +1624,13 @@
       if (center) {
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
-        center.innerHTML = ``; // *** ИЗМЕНЕНИЕ: Убираем таймер ***
+        center.innerHTML = ``;
       }
       
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
       freezeTimer = setTimeout(() => { 
-          running = false;
+          animationRunning = false;
           stopTicking();
       }, Math.max(0, durationMs));
       shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
@@ -1492,13 +1638,12 @@
     }
     
     function renderEmojiMode(durationMs) {
-      const startTime = performance.now();
-      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
-      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
-      stopTicking(); clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
+      clearAllTimersAndLoops();
+      phaseEndAt = performance.now() + durationMs + 2000 + 2000;
+      clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
 
-      // Показываем информацию о цикле
       showCycleInfo('emoji');
+      pauseButton.style.display = 'grid';
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -1518,7 +1663,6 @@
         if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
       });
       
-      // Коллекции эмодзи для разнообразия
       const emojiSets = [
         ['🌸', '🌺', '🌼', '🌻', '🌷', '🌹', '🥀', '💐', '🌱', '🌿', '☘️', '🍀'],
         ['🌵', '🌴', '🌳', '🌲', '🌾', '🍁', '🍂', '🍃', '🍄', '🌰', '🌍', '🌎'],
@@ -1539,7 +1683,6 @@
       
       function createLayerCanvas(parent) {
         const dpr = window.devicePixelRatio || 1;
-        // Разумное увеличение разрешения без превышения лимитов браузера
         const superSampleFactor = dpr >= 3 ? 2 : (dpr >= 2 ? 1.5 : 1);
         const effectiveDpr = dpr * superSampleFactor;
         
@@ -1551,18 +1694,15 @@
         c.style.top = '0';
         c.style.width = `${vw}px`;
         c.style.height = `${vh}px`;
-        // Отключаем сглаживание на уровне CSS для максимальной четкости
         c.style.imageRendering = 'pixelated';
         c.style.imageRendering = '-moz-crisp-edges';
         c.style.imageRendering = 'crisp-edges';
         c.style.imageRendering = '-webkit-optimize-contrast';
         c.style.imageRendering = '-webkit-crisp-edges';
-        // Максимально отключаем сглаживание шрифтов
         c.style.webkitFontSmoothing = 'none';
         c.style.mozOsxFontSmoothing = 'unset';
         c.style.fontSmooth = 'never';
         c.style.textRendering = 'optimizeSpeed';
-        // Дополнительные оптимизации для мобильных устройств
         c.style.transformStyle = 'preserve-3d';
         c.style.transform = 'translateZ(0)';
         parent.appendChild(c);
@@ -1573,12 +1713,10 @@
           powerPreference: 'high-performance'
         });
         ctx.scale(effectiveDpr, effectiveDpr);
-        // Отключаем все виды сглаживания на уровне контекста
         ctx.imageSmoothingEnabled = false;
         if (ctx.textRenderingOptimization) {
           ctx.textRenderingOptimization = 'optimizeSpeed';
         }
-        // Пробуем отключить сглаживание для всех возможных типов
         if (ctx.imageSmoothingQuality !== undefined) {
           ctx.imageSmoothingQuality = 'low';
         }
@@ -1606,36 +1744,28 @@
         const canvas = canvases[layer];
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
-        ctx.clearRect(0, 0, vw, vh); // Используем логические размеры, так как canvas уже масштабирован
+        ctx.clearRect(0, 0, vw, vh);
         
-        // Настройки для максимально четкого рендеринга
-        ctx.imageSmoothingEnabled = false; // Отключаем сглаживание
+        ctx.imageSmoothingEnabled = false;
         if (ctx.textRenderingOptimization) {
           ctx.textRenderingOptimization = 'optimizeSpeed';
         }
-        
-        // Дополнительные настройки для мобильных устройств с высоким DPR
         if (ctx.imageSmoothingQuality) {
           ctx.imageSmoothingQuality = 'high';
         }
         
-        // Упрощенное масштабирование для максимальной четкости
         const baseFontSize = emojiSizes[layer];
-        // Простое увеличение на высоком DPR
         const fontSize = dpr >= 2 ? baseFontSize * 1.5 : baseFontSize;
         
-        // Используем лучшие системные шрифты для эмодзи
         ctx.font = `${fontSize}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Android Emoji", EmojiSymbols, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Рисуем эмодзи в центре - один раз для максимальной четкости
         const x = Math.round(vw / 2);
         const y = Math.round(vh / 2);
         ctx.fillText(emoji, x, y);
       }
       
-      // Initial draw
       Object.keys(allEmojis).forEach(layer => {
         drawEmoji(layer, allEmojis[layer]);
       });
@@ -1661,7 +1791,6 @@
             front: getRandomEmoji()
           };
           
-          // Перерисовка эмодзи
           Object.keys(allEmojis).forEach(layer => {
             drawEmoji(layer, allEmojis[layer]);
           });
@@ -1677,7 +1806,7 @@
         let next;
         do {
           next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus); // Запрещаем дважды на один слой
+        } while (next === lastFocus);
         const at = Math.floor((i + 1) * durationMs / (nSwitches + 1));
         switchTimers.push(setTimeout(() => setFocus(next), at));
         lastFocus = next;
@@ -1696,9 +1825,7 @@
       const doFreeze = () => {
         stopTicking();
         clearFocusTimers();
-        
         removeHintClickHandler();
-        
         if (isHintVisible && currentHintContent) {
           hud.style.transform = 'translateX(-100%)';
           hud.style.opacity = '0';
@@ -1711,12 +1838,12 @@
     }
     
     function renderTargetMode(durationMs) {
-      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
-      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
-      stopTicking(); clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
+      clearAllTimersAndLoops();
+      phaseEndAt = performance.now() + durationMs + 2000 + 2000;
+      clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
 
-      // Показ информации о цикле
       showCycleInfo('target');
+      pauseButton.style.display = 'grid';
 
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
@@ -1770,7 +1897,6 @@
       
       const focusableElements = [];
       
-      // 1. Создаём все круги, изначально размытые
       circlesData.forEach(data => {
         const circleEl = document.createElementNS(svgNS, 'circle');
         circleEl.setAttribute('cx', cx.toFixed(1));
@@ -1784,21 +1910,21 @@
         focusableElements.push(circleEl);
       });
 
-      // 2. Создаём финальную точку, также размытую
       const finalDot = document.createElementNS(svgNS, 'circle');
       finalDot.setAttribute('cx', cx.toFixed(1));
       finalDot.setAttribute('cy', cy.toFixed(1));
       finalDot.setAttribute('r', '3');
       finalDot.setAttribute('fill', strokeColor);
-      finalDot.classList.add('target-circle'); // Точка тоже подчиняется логике фокуса
+      finalDot.classList.add('target-circle');
       svg.appendChild(finalDot);
       focusableElements.push(finalDot);
 
-      const FOCUS_SHIFT_INTERVAL = 5000; // 5 секунд на смену фокуса
+      const totalDurationForMode = durationMs;
+      const FOCUS_SHIFT_INTERVAL = totalDurationForMode / focusableElements.length;
 
-      // 3. Запускаем последовательную смену фокуса
       focusableElements.forEach((element, index) => {
         const focusTimer = setTimeout(() => {
+          if (isPaused) return;
           if (index > 0) {
             focusableElements[index - 1].classList.remove('focus');
           }
@@ -1808,35 +1934,31 @@
         allTimers.push(focusTimer);
       });
 
-      // 4. Обновляем таймеры завершения фазы
-      const totalDuration = focusableElements.length * FOCUS_SHIFT_INTERVAL;
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
       const doFreeze = () => {
         stopTicking();
         clearFocusTimers();
-        
         removeHintClickHandler();
-        
         if (isHintVisible && currentHintContent) {
           hud.style.transform = 'translateX(-100%)';
           hud.style.opacity = '0';
           isHintVisible = false;
         }
       };
-      freezeTimer = setTimeout(doFreeze, Math.max(0, totalDuration));
-      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, totalDuration + freezeLead));
-      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, totalDuration + freezeLead + 2000));
+      freezeTimer = setTimeout(doFreeze, Math.max(0, totalDurationForMode));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, totalDurationForMode + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, totalDurationForMode + freezeLead + 2000));
     }
 
 
     function renderSymbolFor(durationMs) {
-      clearPhaseTimer(); clearFreezeTimer(); clearShutterTimer(); clearCounterTimer();
-      clearFocusTimers(); clearCounterVisTimers(); clearFlickerTimer();
-      stopTicking(); clearSymbol(); updateHUD();
+      clearAllTimersAndLoops();
+      phaseEndAt = performance.now() + durationMs + 2000 + 2000;
+      clearSymbol(); updateHUD();
 
-      // Показ информации о цикле
       showCycleInfo('symbol');
+      pauseButton.style.display = 'grid';
 
       const flipTheme = pick(0.10);
       setTheme(flipTheme);
@@ -1920,7 +2042,7 @@
         do {
           const r = Math.random();
           nextLayer = r < 0.33 ? 'mid' : (r < 0.66 ? 'back' : 'front');
-        } while (nextLayer === lastInPlan); // Запрещаем на один слой дважды
+        } while (nextLayer === lastInPlan);
         focusPlan.push(nextLayer);
       }
       let spent = 0;
@@ -1940,7 +2062,7 @@
       if (center) {
         center.classList.remove('unfocusViz');
         center.classList.add('focusViz');
-        center.innerHTML = ``; // *** ИЗМЕНЕНИЕ: Убираем таймер ***
+        center.innerHTML = ``;
       }
       
       const shutters = document.getElementById('shutters');
@@ -1948,9 +2070,7 @@
       const doFreeze = () => {
         stopTicking();
         clearFocusTimers();
-        
         removeHintClickHandler();
-        
         if (isHintVisible && currentHintContent) {
           hud.style.transform = 'translateX(-100%)';
           hud.style.opacity = '0';
@@ -1966,7 +2086,7 @@
       phase = 'symbol';
       const showMs = randInt(90000, 120001);
       currentDrawMs = showMs;
-      phaseEndAt = performance.now() + showMs + 2000 + 2000;
+      
       const intro = document.getElementById('intro');
       if (intro && !intro.classList.contains('hide')) {
         intro.classList.add('hide');
@@ -1988,40 +2108,37 @@
       if (document.getElementById('modeStars').checked) availableModes.push('stars');
       
       let selectionPool = [...availableModes];
-      if (lastSelectedMode === 'target' && availableModes.length > 1) {
-        selectionPool = availableModes.filter(mode => mode !== 'target');
+      if (lastSelectedMode && availableModes.length > 1) {
+        selectionPool = availableModes.filter(mode => mode !== lastSelectedMode);
       }
 
-      const selectedMode = selectionPool[Math.floor(Math.random() * selectionPool.length)];
+      const selectedMode = selectionPool[Math.floor(Math.random() * selectionPool.length)] || 'symbol';
       lastSelectedMode = selectedMode;
+      
+      // Длительность режима "Мишень" зависит от количества элементов и не должна быть случайной
+      const targetModeDuration = 15 * 5000; // 15 шагов по 5 секунд
+      const duration = selectedMode === 'target' ? targetModeDuration : showMs;
 
-      if (selectedMode === 'target') {
-        renderTargetMode(showMs);
-      } else if (selectedMode === 'words') {
-        renderWordsMode(showMs);
-      } else if (selectedMode === 'emoji') {
-        renderEmojiMode(showMs);
-      } else if (selectedMode === 'rain') {
-        renderRainMode(showMs);
-      } else if (selectedMode === 'stars') {
-        renderStarsMode(showMs);
-      } else {
-        renderSymbolFor(showMs);
+      switch (selectedMode) {
+        case 'target': renderTargetMode(duration); break;
+        case 'words': renderWordsMode(duration); break;
+        case 'emoji': renderEmojiMode(duration); break;
+        case 'rain': renderRainMode(duration); break;
+        case 'stars': renderStarsMode(duration); break;
+        default: renderSymbolFor(duration);
       }
     }
 
     function startPause() {
       phase = 'pause';
+      pauseButton.style.display = 'none';
       updateHUD();
       stopTicking();
       stopContinuousNoise(); 
       setTheme(true);
       clearSymbol();
       clearLayers();
-      clearPhaseTimer();
-      clearFreezeTimer();
-      clearCounterTimer();
-      clearAutoContinueTimer();
+      clearAllTimersAndLoops();
       
       removeHintClickHandler();
       
@@ -2126,11 +2243,18 @@
     window.addEventListener('resize', () => {
       clearTimeout(resizeRaf);
       resizeRaf = setTimeout(() => {
-        if (phase === 'symbol') {
-          app.removeEventListener('click', proceedToNextCycle);
+        if (phase === 'symbol' && !isPaused) {
           const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
-          phaseEndAt = performance.now() + remaining;
-          showSymbol();
+          
+          switch (lastSelectedMode) {
+              case 'symbol': renderSymbolFor(remaining); break;
+              case 'target': renderTargetMode(remaining); break;
+              case 'words': renderWordsMode(remaining); break;
+              case 'emoji': renderEmojiMode(remaining); break;
+              case 'rain': renderRainMode(remaining); break;
+              case 'stars': renderStarsMode(remaining); break;
+              default: showSymbol();
+          }
         }
       }, 120);
     });
@@ -2146,14 +2270,23 @@
     }
 
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && !isPaused) {
         if (!wakeLock) requestWakeLock();
         if (phase === 'symbol') {
-          app.removeEventListener('click', proceedToNextCycle);
           const remaining = Math.max(300, Math.floor(phaseEndAt - performance.now()));
-          phaseEndAt = performance.now() + remaining;
-          showSymbol();
+          
+          switch (lastSelectedMode) {
+              case 'symbol': renderSymbolFor(remaining); break;
+              case 'target': renderTargetMode(remaining); break;
+              case 'words': renderWordsMode(remaining); break;
+              case 'emoji': renderEmojiMode(remaining); break;
+              case 'rain': renderRainMode(remaining); break;
+              case 'stars': renderStarsMode(remaining); break;
+              default: showSymbol();
+          }
         }
+      } else if (document.visibilityState === 'hidden' && phase === 'symbol' && !isPaused) {
+          enterPause();
       }
     });
 
