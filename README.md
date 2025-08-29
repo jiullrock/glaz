@@ -24,7 +24,7 @@ The essence of all exercises is concentration on sharp details.
 - **Target** — Concentric circles with progressive focus training from outer to inner rings
 - **Words** — Multi-language text movement exercises for reading comprehension and eye coordination
 - **Emoji** — Animated emoji characters with depth layering for visual focus training
-- **Rain** — Animated particle patterns simulating chaotic movement for peripheral vision training
+- **Dance** — Animated particle patterns simulating chaotic movement for peripheral vision training
 - **Stars** — Static dot patterns for sustained focus and concentration exercises
 
 #### Audio Features
@@ -146,7 +146,7 @@ glaz/
 - **Мишень** — Концентрические круги с прогрессивной тренировкой фокуса от внешних к внутренним кольцам
 - **Слова** — Упражнения движения многоязычного текста для понимания чтения и координации глаз
 - **Эмодзи** — Анимированные символы эмодзи с многослойной глубиной для тренировки визуальной фокусировки
-- **Дождь** — Анимированные паттерны частиц, имитирующие хаотичное движение для тренировки периферического зрения
+- **Танец** — Анимированные паттерны частиц, имитирующие хаотичное движение для тренировки периферического зрения
 - **Звёзды** — Статичные точечные паттерны для упражнений устойчивой фокусировки и концентрации
 
 #### Аудио функции
