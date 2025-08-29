@@ -496,7 +496,7 @@
   (function() {
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
-    const APP_VERSION = 'v1.2.1';
+    const APP_VERSION = 'v1.2.2';
     // *** КОНЕЦ КОНФИГУРАЦИИ ВЕРСИИ ***
     
     const app = document.getElementById('app');
@@ -821,7 +821,7 @@
       osc.frequency.setValueAtTime(980 + Math.random()*40, now);
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
-      gain.gain.exponentialRmpToValueAtTime(0.0001, now + 0.10);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
       osc.connect(gain).connect(masterGain);
       osc.start(now);
       osc.stop(now + 0.12);
@@ -2153,7 +2153,7 @@
         const restText = currentLanguage === 'ru' ? 'Отдых...' : 'Rest...';
         const continueText = currentLanguage === 'ru' ? 'Нажмите для продолжения' : 'Click to continue';
         const autoContinueText = currentLanguage === 'ru' ? 'Автоматическое продолжение' : 'Auto continue';
-        const backToStartText = currentLanguage === 'ru' ? 'В начало' : 'Back to Start';
+        const backToStartText = currentLanguage === 'ru' ? 'В меню' : 'Back to Menu';
         center.innerHTML = `
           <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
             <div class="title large pulse-large">${restText}</div>
