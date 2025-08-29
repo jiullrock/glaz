@@ -457,7 +457,7 @@
           <label><input type="checkbox" id="modeTarget" value="target" checked><span data-ru="Мишень" data-en="Target">Мишень</span></label>
           <label><input type="checkbox" id="modeWords" value="words" checked><span data-ru="Слова" data-en="Words">Слова</span></label>
           <label><input type="checkbox" id="modeEmoji" value="emoji" checked><span data-ru="Эмодзи" data-en="Emoji">Эмодзи</span></label>
-          <label><input type="checkbox" id="modeRain" value="rain" checked><span data-ru="Дождь" data-en="Rain">Дождь</span></label>
+          <label><input type="checkbox" id="modeDance" value="dance" checked><span data-ru="Танец" data-en="Dance">Танец</span></label>
           <label><input type="checkbox" id="modeStars" value="stars" checked><span data-ru="Звёзды" data-en="Stars">Звёзды</span></label>
       </div>
       <div id="language-switch" style="display: flex; gap: 12px; align-items: center; font-size: 14px;">
@@ -496,7 +496,7 @@
   (function() {
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
-    const APP_VERSION = 'v1.2.2';
+    const APP_VERSION = 'v1.2.3';
     // *** КОНЕЦ КОНФИГУРАЦИИ ВЕРСИИ ***
     
     const app = document.getElementById('app');
@@ -544,7 +544,7 @@
           target: document.getElementById('modeTarget').checked,
           words: document.getElementById('modeWords').checked,
           emoji: document.getElementById('modeEmoji').checked,
-          rain: document.getElementById('modeRain').checked,
+          dance: document.getElementById('modeDance').checked,
           stars: document.getElementById('modeStars').checked
         }
       };
@@ -729,7 +729,7 @@
         'target': { ru: 'Мишень', en: 'Target' },
         'words': { ru: 'Слова', en: 'Words' },
         'emoji': { ru: 'Эмодзи', en: 'Emoji' },
-        'rain': { ru: 'Дождь', en: 'Rain' },
+        'dance': { ru: 'Танец', en: 'Dance' },
         'stars': { ru: 'Звёзды', en: 'Stars' }
       };
       
@@ -1034,7 +1034,7 @@
             case 'target': renderTargetMode(remainingDurationOnPause); break;
             case 'words': renderWordsMode(remainingDurationOnPause); break;
             case 'emoji': renderEmojiMode(remainingDurationOnPause); break;
-            case 'rain': renderRainMode(remainingDurationOnPause); break;
+            case 'dance': renderDanceMode(remainingDurationOnPause); break;
             case 'stars': renderStarsMode(remainingDurationOnPause); break;
             default: startPause(); // Если что-то пошло не так
         }
@@ -1199,13 +1199,12 @@
       return arr.slice(0, randInt(4, 10)).join('');
     }
 
-    function renderRainMode(durationMs) {
+    function renderDanceMode(durationMs) {
       clearAllTimersAndLoops();
       phaseEndAt = performance.now() + durationMs + 2000 + 2000;
       clearSymbol(); updateHUD(); 
       
-      // Показываем информацию о цикле
-      showCycleInfo('rain');
+      showCycleInfo('dance');
       
       setTheme(false);
       startContinuousNoise();
@@ -1247,54 +1246,73 @@
         return { canvas: c, ctx };
       }
       
-      const layerBack = createLayerCanvas(back);
-      const layerMid = createLayerCanvas(mid);
-      const layerFront = createLayerCanvas(front);
-      
-      const isDark = document.documentElement.classList.contains('dark');
-      const noiseColor = isDark ? 'white' : 'black';
-      
-      function generateNoisePattern(ctx, density, dotSize) {
-        ctx.clearRect(0, 0, vw, vh);
-        ctx.fillStyle = noiseColor;
-        
-        const numDots = Math.floor((vw * vh) / (density * density));
-        for (let i = 0; i < numDots; i++) {
-          const x = Math.random() * vw;
-          const y = Math.random() * vh;
-          const size = dotSize + Math.random() * dotSize;
-          
-          ctx.beginPath();
-          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      
-      const noiseConfigs = [
-        { density: 15, dotSize: 1.5 },
-        { density: 25, dotSize: 2.5 },
-        { density: 35, dotSize: 4.0 }
+      const canvasLayers = [createLayerCanvas(back), createLayerCanvas(mid), createLayerCanvas(front)];
+      const noiseColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
+      const dotLayers = [];
+
+      const layerConfigs = [
+          { count: 900, minSpeed: 0.3, maxSpeed: 0.9, minSize: 1, maxSize: 2.5 }, // Back
+          { count: 300, minSpeed: 0.9, maxSpeed: 1.8, minSize: 1.5, maxSize: 3.5 }, // Mid
+          { count: 90,  minSpeed: 1.8, maxSpeed: 3.0, minSize: 2, maxSize: 4.5 }  // Front
       ];
-      
-      const layers = [layerBack, layerMid, layerFront];
-      
-      function animateRain() {
+
+      layerConfigs.forEach(config => {
+          const dots = [];
+          for (let i = 0; i < config.count; i++) {
+              const angle = Math.random() * Math.PI * 2;
+              const speed = rand(config.minSpeed, config.maxSpeed);
+              dots.push({
+                  baseX: Math.random() * vw,
+                  baseY: Math.random() * vh,
+                  vx: Math.cos(angle) * speed,
+                  vy: Math.sin(angle) * speed,
+                  size: rand(config.minSize, config.maxSize),
+                  waveAmplitudeX: rand(-15, 15),
+                  waveFrequencyX: rand(0.01, 0.05),
+                  waveOffsetX: rand(0, Math.PI * 2),
+                  waveAmplitudeY: rand(-15, 15),
+                  waveFrequencyY: rand(0.01, 0.05),
+                  waveOffsetY: rand(0, Math.PI * 2)
+              });
+          }
+          dotLayers.push(dots);
+      });
+
+      function animateDance() {
         if (!animationRunning) return;
-        
-        layers.forEach((layer, idx) => {
-          const config = noiseConfigs[idx];
-          generateNoisePattern(layer.ctx, config.density, config.dotSize);
+
+        canvasLayers.forEach((layer, index) => {
+            const ctx = layer.ctx;
+            const dots = dotLayers[index];
+
+            ctx.clearRect(0, 0, vw, vh);
+            ctx.fillStyle = noiseColor;
+
+            dots.forEach(dot => {
+                dot.baseX += dot.vx;
+                dot.baseY += dot.vy;
+
+                if (dot.baseX < 0) dot.baseX = vw;
+                if (dot.baseX > vw) dot.baseX = 0;
+                if (dot.baseY < 0) dot.baseY = vh;
+                if (dot.baseY > vh) dot.baseY = 0;
+
+                const waveX = dot.waveAmplitudeX * Math.sin(dot.baseY * dot.waveFrequencyX + dot.waveOffsetX);
+                const waveY = dot.waveAmplitudeY * Math.sin(dot.baseX * dot.waveFrequencyY + dot.waveOffsetY);
+                
+                const finalX = dot.baseX + waveX;
+                const finalY = dot.baseY + waveY;
+
+                ctx.beginPath();
+                ctx.arc(finalX, finalY, dot.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
         });
-        
-        const delays = [100, 150, 200];
-        const delay = delays[Math.floor(Math.random() * delays.length)];
-        
-        setTimeout(() => {
-          requestAnimationFrame(animateRain);
-        }, delay);
+
+        requestAnimationFrame(animateDance);
       }
       
-      animateRain();
+      animateDance();
       
       function setFocus(target) {
         const map = { back, mid, front };
@@ -2104,7 +2122,7 @@
       if (document.getElementById('modeTarget').checked) availableModes.push('target');
       if (document.getElementById('modeWords').checked) availableModes.push('words');
       if (document.getElementById('modeEmoji').checked) availableModes.push('emoji');
-      if (document.getElementById('modeRain').checked) availableModes.push('rain');
+      if (document.getElementById('modeDance').checked) availableModes.push('dance');
       if (document.getElementById('modeStars').checked) availableModes.push('stars');
       
       let selectionPool = [...availableModes];
@@ -2123,7 +2141,7 @@
         case 'target': renderTargetMode(duration); break;
         case 'words': renderWordsMode(duration); break;
         case 'emoji': renderEmojiMode(duration); break;
-        case 'rain': renderRainMode(duration); break;
+        case 'dance': renderDanceMode(duration); break;
         case 'stars': renderStarsMode(duration); break;
         default: renderSymbolFor(duration);
       }
@@ -2153,7 +2171,7 @@
         const restText = currentLanguage === 'ru' ? 'Отдых...' : 'Rest...';
         const continueText = currentLanguage === 'ru' ? 'Нажмите для продолжения' : 'Click to continue';
         const autoContinueText = currentLanguage === 'ru' ? 'Автоматическое продолжение' : 'Auto continue';
-        const backToStartText = currentLanguage === 'ru' ? 'В меню' : 'Back to Menu';
+        const backToStartText = currentLanguage === 'ru' ? 'В меню' : 'To Menu';
         center.innerHTML = `
           <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
             <div class="title large pulse-large">${restText}</div>
@@ -2251,7 +2269,7 @@
               case 'target': renderTargetMode(remaining); break;
               case 'words': renderWordsMode(remaining); break;
               case 'emoji': renderEmojiMode(remaining); break;
-              case 'rain': renderRainMode(remaining); break;
+              case 'dance': renderDanceMode(remaining); break;
               case 'stars': renderStarsMode(remaining); break;
               default: showSymbol();
           }
@@ -2280,7 +2298,7 @@
               case 'target': renderTargetMode(remaining); break;
               case 'words': renderWordsMode(remaining); break;
               case 'emoji': renderEmojiMode(remaining); break;
-              case 'rain': renderRainMode(remaining); break;
+              case 'dance': renderDanceMode(remaining); break;
               case 'stars': renderStarsMode(remaining); break;
               default: showSymbol();
           }
@@ -2300,7 +2318,7 @@
         document.getElementById('modeTarget'),
         document.getElementById('modeWords'),
         document.getElementById('modeEmoji'),
-        document.getElementById('modeRain'),
+        document.getElementById('modeDance'),
         document.getElementById('modeStars')
       ];
 
