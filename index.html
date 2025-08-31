@@ -496,7 +496,7 @@
   (function() {
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
-    const APP_VERSION = 'v1.2.3';
+    const APP_VERSION = 'v1.2.4';
     // *** КОНЕЦ КОНФИГУРАЦИИ ВЕРСИИ ***
     
     const app = document.getElementById('app');
@@ -1755,6 +1755,34 @@
         front: getRandomEmoji()
       };
       
+      // Позиции эмодзи для каждого слоя (начинаем в центре)
+      let emojiPositions = {
+        back: { x: vw / 2, y: vh / 2 },
+        mid: { x: vw / 2, y: vh / 2 },
+        front: { x: vw / 2, y: vh / 2 }
+      };
+      
+      // Направление движения для плавной анимации
+      let movementDirection = {
+        dx: (Math.random() - 0.5) * 2, // От -1 до 1
+        dy: (Math.random() - 0.5) * 2  // От -1 до 1
+      };
+      
+      // Нормализуем вектор направления
+      const magnitude = Math.sqrt(movementDirection.dx * movementDirection.dx + movementDirection.dy * movementDirection.dy);
+      movementDirection.dx /= magnitude;
+      movementDirection.dy /= magnitude;
+      
+      // Скорость движения (пиксели за кадр) - движение отключено
+      const movementSpeed = 0;
+      
+      // Накопители для субпиксельного позиционирования
+      let subPixelAccumulator = {
+        back: { x: 0, y: 0 },
+        mid: { x: 0, y: 0 },
+        front: { x: 0, y: 0 }
+      };
+      
       const canvases = { back: canvBack, mid: canvMid, front: canvFront };
       const isDark = document.documentElement.classList.contains('dark');
       
@@ -1779,14 +1807,124 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        const x = Math.round(vw / 2);
-        const y = Math.round(vh / 2);
+        // Используем позиции для рисования
+        const x = Math.round(emojiPositions[layer].x);
+        const y = Math.round(emojiPositions[layer].y);
         ctx.fillText(emoji, x, y);
       }
       
       Object.keys(allEmojis).forEach(layer => {
         drawEmoji(layer, allEmojis[layer]);
       });
+      
+      // Функция для плавного изменения эмодзи с эффектом fadeout/fadein
+      function changeEmojiWithFade(layer, newEmoji) {
+        const canvas = canvases[layer];
+        const ctx = canvas.getContext('2d');
+        
+        // Плавное исчезновение старого эмодзи (2.5 секунды)
+        let opacity = 1.0;
+        const fadeOutDuration = 2500; // 2.5 секунды
+        const fadeInDuration = 2500;  // 2.5 секунды
+        const fadeOutStep = 1.0 / (fadeOutDuration / 16); // 16ms per frame ~60fps
+        const fadeInStep = 1.0 / (fadeInDuration / 16);   // 16ms per frame ~60fps
+        
+        function fadeOut() {
+          if (opacity > 0) {
+            ctx.clearRect(0, 0, vw, vh);
+            ctx.globalAlpha = opacity;
+            drawEmoji(layer, allEmojis[layer]); // Рисуем старый эмодзи с уменьшенной прозрачностью
+            opacity -= fadeOutStep;
+            requestAnimationFrame(fadeOut);
+          } else {
+            // После полного исчезновения меняем эмодзи
+            allEmojis[layer] = newEmoji;
+            fadeIn();
+          }
+        }
+        
+        function fadeIn() {
+          if (opacity < 1.0) {
+            ctx.clearRect(0, 0, vw, vh);
+            ctx.globalAlpha = opacity;
+            drawEmoji(layer, allEmojis[layer]); // Рисуем новый эмодзи с увеличенной прозрачностью
+            opacity += fadeInStep;
+            requestAnimationFrame(fadeIn);
+          } else {
+            // Восстанавливаем полную непрозрачность
+            ctx.globalAlpha = 1.0;
+            drawEmoji(layer, allEmojis[layer]);
+          }
+        }
+        
+        fadeOut();
+      }
+      
+      // Функция для обновления позиций эмодзи с учетом границ экрана
+      function updateEmojiPositions() {
+        // Плавно изменяем направление движения
+        if (Math.random() < 0.02) { // 2% шанс на каждом кадре
+          movementDirection.dx += (Math.random() - 0.5) * 0.1;
+          movementDirection.dy += (Math.random() - 0.5) * 0.1;
+          
+          // Нормализуем вектор направления
+          const magnitude = Math.sqrt(movementDirection.dx * movementDirection.dx + movementDirection.dy * movementDirection.dy);
+          if (magnitude > 0) {
+            movementDirection.dx /= magnitude;
+            movementDirection.dy /= magnitude;
+          }
+        }
+        
+        // Размеры эмодзи для проверки границ (берем самый большой размер)
+        const maxEmojiSize = emojiSizes.front * (window.devicePixelRatio >= 2 ? 1.5 : 1);
+        const buffer = maxEmojiSize / 2 + 30; // Буфер от краев экрана
+        
+        // Обновляем позиции для всех слоев с субпиксельной точностью
+        Object.keys(emojiPositions).forEach(layer => {
+          // Добавляем движение к накопителю
+          subPixelAccumulator[layer].x += movementDirection.dx * movementSpeed;
+          subPixelAccumulator[layer].y += movementDirection.dy * movementSpeed;
+          
+          // Извлекаем целую часть для обновления позиции
+          const deltaX = Math.floor(subPixelAccumulator[layer].x);
+          const deltaY = Math.floor(subPixelAccumulator[layer].y);
+          
+          if (deltaX !== 0 || deltaY !== 0) {
+            emojiPositions[layer].x += deltaX;
+            emojiPositions[layer].y += deltaY;
+            
+            // Обновляем накопитель
+            subPixelAccumulator[layer].x -= deltaX;
+            subPixelAccumulator[layer].y -= deltaY;
+          }
+          
+          // Проверяем границы и меняем направление при необходимости
+          if (emojiPositions[layer].x < buffer || emojiPositions[layer].x > vw - buffer) {
+            movementDirection.dx *= -1;
+            emojiPositions[layer].x = Math.max(buffer, Math.min(vw - buffer, emojiPositions[layer].x));
+            subPixelAccumulator[layer].x = 0; // Сброс накопителя при изменении направления
+          }
+          
+          if (emojiPositions[layer].y < buffer || emojiPositions[layer].y > vh - buffer) {
+            movementDirection.dy *= -1;
+            emojiPositions[layer].y = Math.max(buffer, Math.min(vh - buffer, emojiPositions[layer].y));
+            subPixelAccumulator[layer].y = 0; // Сброс накопителя при изменении направления
+          }
+        });
+        
+        // Перерисовываем все эмодзи на новых позициях
+        Object.keys(allEmojis).forEach(layer => {
+          drawEmoji(layer, allEmojis[layer]);
+        });
+        
+        // Продолжаем анимацию
+        if (phase === 'symbol' && lastSelectedMode === 'emoji') {
+          requestAnimationFrame(updateEmojiPositions);
+        }
+      }
+      
+      // Запускаем анимацию движения
+      requestAnimationFrame(updateEmojiPositions);
       
       function setFocus(target) {
         playFocusSwitch(target);
@@ -1803,15 +1941,10 @@
         }
         
         if (target === 'front') {
-          allEmojis = {
-            back: getRandomEmoji(),
-            mid: getRandomEmoji(),
-            front: getRandomEmoji()
-          };
-          
-          Object.keys(allEmojis).forEach(layer => {
-            drawEmoji(layer, allEmojis[layer]);
-          });
+          // Используем плавный переход при изменении эмодзи
+          changeEmojiWithFade('back', getRandomEmoji());
+          changeEmojiWithFade('mid', getRandomEmoji());
+          changeEmojiWithFade('front', getRandomEmoji());
         }
       }
       setFocus('mid');
