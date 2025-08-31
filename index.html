@@ -1576,6 +1576,9 @@
       const isDark = document.documentElement.classList.contains('dark');
       const wordColor = isDark ? '#fff' : '#000';
       
+      // Счетчик фокусов на переднем слое
+      let frontFocusCount = 0;
+      
       function setFocus(target) {
         playFocusSwitch(target);
         const map = { back, mid, front };
@@ -1588,6 +1591,22 @@
         if (center) {
           center.classList.toggle('focusViz', target === 'mid');
           center.classList.toggle('unfocusViz', target !== 'mid');
+        }
+        
+        // Обработка фокуса на переднем слое
+        if (target === 'front') {
+          frontFocusCount++;
+          
+          // Если это третий (или более) фокус на переднем слое, меняем эмодзи
+          if (frontFocusCount >= 3) {
+            // Используем плавный переход при изменении эмодзи
+            changeEmojiWithFade('back', getRandomEmoji());
+            changeEmojiWithFade('mid', getRandomEmoji());
+            changeEmojiWithFade('front', getRandomEmoji());
+            
+            // Сбрасываем счетчик
+            frontFocusCount = 0;
+          }
         }
       }
       setFocus('mid');
@@ -1926,6 +1945,9 @@
       // Запускаем анимацию движения
       requestAnimationFrame(updateEmojiPositions);
       
+      // Счетчик фокусов на переднем слое
+      let frontFocusCount = 0;
+      
       function setFocus(target) {
         playFocusSwitch(target);
         const map = { back, mid, front };
@@ -1940,11 +1962,20 @@
           center.classList.toggle('unfocusViz', target !== 'mid');
         }
         
+        // Обработка фокуса на переднем слое
         if (target === 'front') {
-          // Используем плавный переход при изменении эмодзи
-          changeEmojiWithFade('back', getRandomEmoji());
-          changeEmojiWithFade('mid', getRandomEmoji());
-          changeEmojiWithFade('front', getRandomEmoji());
+          frontFocusCount++;
+          
+          // Если это третий (или более) фокус на переднем слое, меняем эмодзи
+          if (frontFocusCount >= 3) {
+            // Используем плавный переход при изменении эмодзи
+            changeEmojiWithFade('back', getRandomEmoji());
+            changeEmojiWithFade('mid', getRandomEmoji());
+            changeEmojiWithFade('front', getRandomEmoji());
+            
+            // Сбрасываем счетчик
+            frontFocusCount = 0;
+          }
         }
       }
       setFocus('mid');
