@@ -560,7 +560,8 @@
     let modeSequence = 'random'; // Добавляем переменную для последовательности режимов
     let modeDuration = 2; // Добавляем переменную для длительности режимов (в минутах)
     let showModeCountdown = true; // Добавляем переменную для отображения таймера режима
-    
+    let noBreakMode = false; // Добавляем переменную для режима без отдыха
+
     // Переменные для таймера обратного отсчета активного режима
     let modeCountdownTimer = null;
     let modeCountdownTimerElement = null;
@@ -578,6 +579,7 @@
         modeSequence: modeSequence, // Добавляем настройку последовательности режимов
         modeDuration: modeDuration, // Добавляем настройку длительности режимов
         showModeCountdown: showModeCountdown, // Добавляем настройку отображения таймера режима
+        noBreakMode: noBreakMode, // Добавляем настройку режима без отдыха
         modes: {
           symbol: document.getElementById('modeSymbol').checked,
           target: document.getElementById('modeTarget').checked,
@@ -654,6 +656,15 @@
             showModeCountdown = preferences.showModeCountdown;
           } else {
             showModeCountdown = true; // По умолчанию показываем таймер
+            // Сохраняем значение по умолчанию
+            savePreferences();
+          }
+          
+          // Загрузка настроек режима без отдыха
+          if (typeof preferences.noBreakMode === 'boolean') {
+            noBreakMode = preferences.noBreakMode;
+          } else {
+            noBreakMode = false; // По умолчанию режим отдыха включен
             // Сохраняем значение по умолчанию
             savePreferences();
           }
@@ -1123,7 +1134,8 @@
                 random: 'Случайный',
                 sequential: 'Последовательный',
                 modeDuration: 'Длительность режимов:',
-                minutes: 'мин'
+                minutes: 'мин',
+                noBreakMode: 'Без отдыха'
             },
             en: {
                 title: 'Pause',
@@ -1134,7 +1146,8 @@
                 random: 'Random',
                 sequential: 'Sequential',
                 modeDuration: 'Mode Duration:',
-                minutes: 'min'
+                minutes: 'min',
+                noBreakMode: 'No break'
             }
         };
         const langTexts = texts[currentLanguage];
@@ -1156,7 +1169,11 @@
                             </label>
                         </div>
                     </div>
-                    <div style="margin-bottom: 20px; text-align: center;">
+                    <div style="margin-bottom: 15px; text-align: center;">
+                        <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; margin-bottom: 15px;">
+                            <input type="checkbox" id="noBreakModeCheckbox" ${noBreakMode ? 'checked' : ''} style="margin-right: 6px;">
+                            <span data-ru="${langTexts.noBreakMode}" data-en="${langTexts.noBreakMode}">${langTexts.noBreakMode}</span>
+                        </label>
                         <div style="margin-bottom: 8px; font-weight: 600;">${langTexts.modeDuration}</div>
                         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                             ${[2, 4, 6, 8, 10].map(minutes => `
@@ -1166,12 +1183,12 @@
                                 </label>
                             `).join('')}
                         </div>
-                        <div style="margin-top: 15px; display: flex; justify-content: center;">
-                            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px;">
-                                <input type="checkbox" id="showModeCountdownCheckbox" ${showModeCountdown ? 'checked' : ''} style="margin-right: 6px;">
-                                <span data-ru="Показывать таймер" data-en="Show timer">Показывать таймер</span>
-                            </label>
-                        </div>
+                    </div>
+                    <div style="margin-bottom: 20px; text-align: center;">
+                        <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px;">
+                            <input type="checkbox" id="showModeCountdownCheckbox" ${showModeCountdown ? 'checked' : ''} style="margin-right: 6px;">
+                            <span data-ru="Показывать таймер" data-en="Show timer">Показывать таймер</span>
+                        </label>
                     </div>
                     <button id="resumeBtn">${langTexts.continue}</button>
                     <button id="nextModeBtn">${langTexts.next}</button>
@@ -1221,6 +1238,15 @@
                 
                 // Обновляем отображение таймера режима
                 updateModeCountdownVisibility();
+            });
+        }
+
+        // Добавляем обработчик для чекбокса режима без отдыха
+        const noBreakModeCheckbox = document.getElementById('noBreakModeCheckbox');
+        if (noBreakModeCheckbox) {
+            noBreakModeCheckbox.addEventListener('change', (e) => {
+                noBreakMode = e.target.checked;
+                savePreferences(); // Сохраняем настройку сразу при изменении
             });
         }
 
@@ -2670,6 +2696,12 @@
     }
 
     function startPause() {
+      // Если включен режим без отдыха, переходим к следующему режиму сразу
+      if (noBreakMode) {
+        showSymbol();
+        return;
+      }
+      
       phase = 'pause';
       pauseButton.style.display = 'none';
       updateHUD();
