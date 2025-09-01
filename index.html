@@ -436,6 +436,31 @@
       height: 100%;
       fill: var(--fg); /* Адаптивный цвет иконки */
     }
+    
+    /* Стили для таймера обратного отсчета */
+    #modeCountdownTimer {
+      position: fixed;
+      bottom: 10px;
+      /* Расположение слева от кнопки паузы */
+      right: 64px; /* 10px от края + 44px ширина кнопки паузы + 10px отступ */
+      height: 44px;
+      display: none; /* Скрыто по-умолчанию */
+      align-items: center;
+      justify-content: center;
+      z-index: 1500;
+      font-family: monospace;
+      font-size: 14px;
+      color: var(--fg);
+      background-color: rgba(128, 128, 128, 0.15);
+      border-radius: 22px; /* Половина высоты для круглых краев */
+      padding: 0 12px;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    }
+    
+    #modeCountdownTimer:hover {
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -485,6 +510,7 @@
   </div>
   <div class="shutters" id="shutters"><div class="top"></div><div class="bottom"></div></div>
   <div id="pauseOverlay"></div>
+  <div id="modeCountdownTimer"></div>
   <div id="pauseBtn" title="Pause">
     <svg viewBox="0 0 100 100">
       <rect x="25" y="25" width="15" height="50" rx="5"></rect>
@@ -496,7 +522,7 @@
   (function() {
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
-    const APP_VERSION = 'v1.2.4';
+    const APP_VERSION = 'v1.2.7';
     // *** КОНЕЦ КОНФИГУРАЦИИ ВЕРСИИ ***
     
     const app = document.getElementById('app');
@@ -531,6 +557,16 @@
     let currentLanguage = 'ru';
     let autoContinueTimer = null;
     let countdownSeconds = 10;
+    let modeSequence = 'random'; // Добавляем переменную для последовательности режимов
+    let modeDuration = 2; // Добавляем переменную для длительности режимов (в минутах)
+    let showModeCountdown = true; // Добавляем переменную для отображения таймера режима
+    
+    // Переменные для таймера обратного отсчета активного режима
+    let modeCountdownTimer = null;
+    let modeCountdownTimerElement = null;
+    
+    // Инициализация элемента таймера
+    modeCountdownTimerElement = document.getElementById('modeCountdownTimer');
 
     // Функции LocalStorage для сохранения настроек
     function savePreferences() {
@@ -539,6 +575,9 @@
         soundEnabled: soundEnabled,
         hintsEnabled: hintsEnabled,
         autoContinueEnabled: autoContinueEnabled,
+        modeSequence: modeSequence, // Добавляем настройку последовательности режимов
+        modeDuration: modeDuration, // Добавляем настройку длительности режимов
+        showModeCountdown: showModeCountdown, // Добавляем настройку отображения таймера режима
         modes: {
           symbol: document.getElementById('modeSymbol').checked,
           target: document.getElementById('modeTarget').checked,
@@ -592,6 +631,33 @@
             autoContinueEnabled = preferences.autoContinueEnabled;
           }
           
+          // Загрузка настроек последовательности режимов
+          if (preferences.modeSequence) {
+            modeSequence = preferences.modeSequence;
+          } else {
+            modeSequence = 'random'; // По умолчанию случайная последовательность
+            // Сохраняем значение по умолчанию
+            savePreferences();
+          }
+          
+          // Загрузка настроек длительности режимов
+          if (typeof preferences.modeDuration === 'number') {
+            modeDuration = preferences.modeDuration;
+          } else {
+            modeDuration = 2; // По умолчанию 2 минуты
+            // Сохраняем значение по умолчанию
+            savePreferences();
+          }
+          
+          // Загрузка настроек отображения таймера режима
+          if (typeof preferences.showModeCountdown === 'boolean') {
+            showModeCountdown = preferences.showModeCountdown;
+          } else {
+            showModeCountdown = true; // По умолчанию показываем таймер
+            // Сохраняем значение по умолчанию
+            savePreferences();
+          }
+          
           // Загрузка настроек режимов
           if (preferences.modes) {
             Object.entries(preferences.modes).forEach(([mode, checked]) => {
@@ -599,6 +665,9 @@
               if (checkbox) checkbox.checked = checked;
             });
           }
+        } else {
+          // Если настроек нет, сохраняем значения по умолчанию
+          savePreferences();
         }
       } catch (e) {
         console.warn('Failed to load preferences:', e);
@@ -955,6 +1024,63 @@
     function clearCounterTimer() { if (counterTimer) { clearInterval(counterTimer); counterTimer = null; } }
     function clearFlickerTimer() { if (flickerTimer) { clearTimeout(flickerTimer); flickerTimer = null; } }
     function clearAutoContinueTimer() { if (autoContinueTimer) { clearInterval(autoContinueTimer); autoContinueTimer = null; } }
+    
+    // Функции для управления таймером обратного отсчета активного режима
+    function startModeCountdownTimer(durationMs) {
+        // Останавливаем предыдущий таймер, если он есть
+        stopModeCountdownTimer();
+        
+        // Показываем элемент таймера в зависимости от настройки
+        if (modeCountdownTimerElement) {
+            modeCountdownTimerElement.style.display = showModeCountdown ? 'flex' : 'none';
+        }
+        
+        // Запускаем новый таймер
+        let remainingTime = durationMs;
+        updateModeCountdownDisplay(remainingTime);
+        
+        modeCountdownTimer = setInterval(() => {
+            remainingTime -= 1000;
+            if (remainingTime <= 0) {
+                stopModeCountdownTimer();
+                if (modeCountdownTimerElement) {
+                    modeCountdownTimerElement.style.display = 'none';
+                }
+            } else {
+                updateModeCountdownDisplay(remainingTime);
+            }
+        }, 1000);
+    }
+    
+    function stopModeCountdownTimer() {
+        if (modeCountdownTimer) {
+            clearInterval(modeCountdownTimer);
+            modeCountdownTimer = null;
+        }
+        if (modeCountdownTimerElement) {
+            modeCountdownTimerElement.style.display = 'none';
+        }
+    }
+    
+    function updateModeCountdownDisplay(remainingTimeMs) {
+        if (!modeCountdownTimerElement) return;
+        
+        // Преобразуем миллисекунды в минуты и секунды
+        const totalSeconds = Math.ceil(remainingTimeMs / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        
+        // Форматируем строку как MM:SS
+        const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        modeCountdownTimerElement.textContent = formattedTime;
+    }
+
+    function updateModeCountdownVisibility() {
+        if (!modeCountdownTimerElement) return;
+        
+        // Обновляем отображение таймера режима в зависимости от настройки
+        modeCountdownTimerElement.style.display = showModeCountdown ? 'flex' : 'none';
+    }
 
     function clearAllTimersAndLoops() {
         clearPhaseTimer();
@@ -968,6 +1094,8 @@
         stopTicking();
         stopContinuousNoise();
         animationRunning = false;
+        // Останавливаем таймер обратного отсчета режима
+        stopModeCountdownTimer();
     }
     
     pauseButton.addEventListener('click', (e) => {
@@ -990,13 +1118,23 @@
                 title: 'Пауза',
                 continue: 'Продолжить',
                 next: 'Следующий режим',
-                menu: 'В меню'
+                menu: 'В меню',
+                modeSequence: 'Порядок режимов:',
+                random: 'Случайный',
+                sequential: 'Последовательный',
+                modeDuration: 'Длительность режимов:',
+                minutes: 'мин'
             },
             en: {
                 title: 'Pause',
                 continue: 'Continue',
                 next: 'Next Mode',
-                menu: 'To Menu'
+                menu: 'To Menu',
+                modeSequence: 'Mode Order:',
+                random: 'Random',
+                sequential: 'Sequential',
+                modeDuration: 'Mode Duration:',
+                minutes: 'min'
             }
         };
         const langTexts = texts[currentLanguage];
@@ -1005,6 +1143,36 @@
             <div class="pause-modal">
                 <h2>${langTexts.title}</h2>
                 <div class="pause-actions">
+                    <div style="margin-bottom: 15px; text-align: center;">
+                        <div style="margin-bottom: 8px; font-weight: 600;">${langTexts.modeSequence}</div>
+                        <div style="display: flex; gap: 15px; justify-content: center;">
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="modeSequence" value="random" ${modeSequence === 'random' ? 'checked' : ''} style="margin-right: 6px;">
+                                ${langTexts.random}
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="modeSequence" value="sequential" ${modeSequence === 'sequential' ? 'checked' : ''} style="margin-right: 6px;">
+                                ${langTexts.sequential}
+                            </label>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 20px; text-align: center;">
+                        <div style="margin-bottom: 8px; font-weight: 600;">${langTexts.modeDuration}</div>
+                        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                            ${[2, 4, 6, 8, 10].map(minutes => `
+                                <label style="display: flex; align-items: center; cursor: pointer; padding: 6px 12px; background: ${modeDuration === minutes ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)'}; border-radius: 6px; transition: background 0.2s ease;">
+                                    <input type="radio" name="modeDuration" value="${minutes}" ${modeDuration === minutes ? 'checked' : ''} style="margin-right: 6px;">
+                                    ${minutes} ${langTexts.minutes}
+                                </label>
+                            `).join('')}
+                        </div>
+                        <div style="margin-top: 15px; display: flex; justify-content: center;">
+                            <label style="display: flex; align-items: center; cursor: pointer; font-size: 14px;">
+                                <input type="checkbox" id="showModeCountdownCheckbox" ${showModeCountdown ? 'checked' : ''} style="margin-right: 6px;">
+                                <span data-ru="Показывать таймер" data-en="Show timer">Показывать таймер</span>
+                            </label>
+                        </div>
+                    </div>
                     <button id="resumeBtn">${langTexts.continue}</button>
                     <button id="nextModeBtn">${langTexts.next}</button>
                     <button id="toMenuBtn">${langTexts.menu}</button>
@@ -1012,12 +1180,55 @@
             </div>
         `;
         pauseOverlay.style.display = 'grid';
+        
+        // Обновляем язык для динамически созданных элементов
+        updateLanguage(currentLanguage);
+
+        // Добавляем обработчик для переключателя последовательности режимов
+        const modeSequenceRadios = document.querySelectorAll('input[name="modeSequence"]');
+        modeSequenceRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                modeSequence = e.target.value;
+                savePreferences(); // Сохраняем настройку сразу при изменении
+            });
+        });
+
+        // Добавляем обработчик для переключателя длительности режимов
+        const modeDurationRadios = document.querySelectorAll('input[name="modeDuration"]');
+        modeDurationRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                modeDuration = parseInt(e.target.value);
+                savePreferences(); // Сохраняем настройку сразу при изменении
+                
+                // Обновляем визуальное выделение выбранной длительности
+                document.querySelectorAll('input[name="modeDuration"]').forEach(r => {
+                    const label = r.parentElement;
+                    if (r.checked) {
+                        label.style.background = 'rgba(255, 255, 255, 0.2)';
+                    } else {
+                        label.style.background = 'rgba(255, 255, 255, 0.1)';
+                    }
+                });
+            });
+        });
+
+        // Добавляем обработчик для чекбокса отображения таймера режима
+        const showModeCountdownCheckbox = document.getElementById('showModeCountdownCheckbox');
+        if (showModeCountdownCheckbox) {
+            showModeCountdownCheckbox.addEventListener('change', (e) => {
+                showModeCountdown = e.target.checked;
+                savePreferences(); // Сохраняем настройку сразу при изменении
+                
+                // Обновляем отображение таймера режима
+                updateModeCountdownVisibility();
+            });
+        }
 
         document.getElementById('resumeBtn').addEventListener('click', exitPause);
         document.getElementById('nextModeBtn').addEventListener('click', () => {
             pauseOverlay.style.display = 'none';
             isPaused = false;
-            showSymbol();
+            showSymbol(); // This will use the updated modeDuration
         });
         document.getElementById('toMenuBtn').addEventListener('click', () => window.location.reload());
     }
@@ -1028,14 +1239,15 @@
         pauseOverlay.style.display = 'none';
         pauseButton.style.display = 'grid';
         
-        // Возобновляем текущий режим с оставшимся временем
+        // Перезапускаем текущий режим с новой длительностью
+        const newDurationMs = modeDuration * 60 * 1000;
         switch (lastSelectedMode) {
-            case 'symbol': renderSymbolFor(remainingDurationOnPause); break;
-            case 'target': renderTargetMode(remainingDurationOnPause); break;
-            case 'words': renderWordsMode(remainingDurationOnPause); break;
-            case 'emoji': renderEmojiMode(remainingDurationOnPause); break;
-            case 'dance': renderDanceMode(remainingDurationOnPause); break;
-            case 'stars': renderStarsMode(remainingDurationOnPause); break;
+            case 'symbol': renderSymbolFor(newDurationMs); break;
+            case 'target': renderTargetMode(newDurationMs); break;
+            case 'words': renderWordsMode(newDurationMs); break;
+            case 'emoji': renderEmojiMode(newDurationMs); break;
+            case 'dance': renderDanceMode(newDurationMs); break;
+            case 'stars': renderStarsMode(newDurationMs); break;
             default: startPause(); // Если что-то пошло не так
         }
     }
@@ -1210,6 +1422,8 @@
       startContinuousNoise();
       animationRunning = true;
       pauseButton.style.display = 'grid';
+      // Запускаем таймер обратного отсчета режима
+      startModeCountdownTimer(durationMs);
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -1376,6 +1590,8 @@
       setTheme(false);
       startContinuousNoise();
       pauseButton.style.display = 'grid';
+      // Запускаем таймер обратного отсчета режима
+      startModeCountdownTimer(durationMs);
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -1509,6 +1725,8 @@
       showCycleInfo('words');
       animationRunning = true;
       pauseButton.style.display = 'grid';
+      // Запускаем таймер обратного отсчета режима
+      startModeCountdownTimer(durationMs);
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -1681,6 +1899,8 @@
 
       showCycleInfo('emoji');
       pauseButton.style.display = 'grid';
+      // Запускаем таймер обратного отсчета режима
+      startModeCountdownTimer(durationMs);
 
       const layersRoot = document.getElementById('layers');
       const back = document.getElementById('layerBack');
@@ -2026,6 +2246,8 @@
 
       showCycleInfo('target');
       pauseButton.style.display = 'grid';
+      // Запускаем таймер обратного отсчета режима
+      startModeCountdownTimer(durationMs);
 
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
@@ -2101,20 +2323,138 @@
       svg.appendChild(finalDot);
       focusableElements.push(finalDot);
 
-      const totalDurationForMode = durationMs;
-      const FOCUS_SHIFT_INTERVAL = totalDurationForMode / focusableElements.length;
-
-      focusableElements.forEach((element, index) => {
-        const focusTimer = setTimeout(() => {
-          if (isPaused) return;
-          if (index > 0) {
-            focusableElements[index - 1].classList.remove('focus');
+      // Базовая длительность одного цикла - 2 минуты (120000 мс)
+      const baseCycleDuration = 120000; // 2 минуты в миллисекундах
+      const pauseDuration = 5000; // 5 секунд паузы
+      
+      // Если общая длительность больше 2 минут, используем специальный алгоритм
+      if (durationMs > baseCycleDuration) {
+        // Вычисляем количество полных циклов
+        const cycleTime = baseCycleDuration + pauseDuration;
+        const fullCycles = Math.floor(durationMs / cycleTime);
+        const remainingTime = durationMs % cycleTime;
+        
+        // Фокусируем на каждом элементе в течение базового цикла
+        const FOCUS_SHIFT_INTERVAL = baseCycleDuration / focusableElements.length;
+        
+        // Запускаем полные циклы
+        for (let cycle = 0; cycle < fullCycles; cycle++) {
+          const cycleStart = cycle * cycleTime;
+          
+          focusableElements.forEach((element, index) => {
+            const focusTimer = setTimeout(() => {
+              if (isPaused) return;
+              if (index > 0) {
+                focusableElements[index - 1].classList.remove('focus');
+              }
+              element.classList.add('focus');
+              playFocusSwitch('mid'); 
+            }, cycleStart + index * FOCUS_SHIFT_INTERVAL);
+            allTimers.push(focusTimer);
+          });
+          
+          // Пауза после цикла (кроме последнего цикла)
+          if (cycle < fullCycles) {
+            const pauseTimer = setTimeout(() => {
+              // Убираем фокус с последнего элемента перед паузой
+              if (focusableElements.length > 0) {
+                focusableElements[focusableElements.length - 1].classList.remove('focus');
+              }
+            }, cycleStart + baseCycleDuration);
+            allTimers.push(pauseTimer);
           }
-          element.classList.add('focus');
-          playFocusSwitch('mid'); 
-        }, index * FOCUS_SHIFT_INTERVAL);
-        allTimers.push(focusTimer);
-      });
+        }
+        
+        // Обрабатываем оставшееся время
+        if (remainingTime > 0) {
+          // Если оставшееся время больше или равно базовой длительности цикла,
+          // запускаем еще один полный цикл
+          if (remainingTime >= baseCycleDuration) {
+            const cycleStart = fullCycles * cycleTime;
+            const partialFocusShiftInterval = baseCycleDuration / focusableElements.length;
+            
+            focusableElements.forEach((element, index) => {
+              const focusTimer = setTimeout(() => {
+                if (isPaused) return;
+                if (index > 0) {
+                  focusableElements[index - 1].classList.remove('focus');
+                }
+                element.classList.add('focus');
+                playFocusSwitch('mid'); 
+              }, cycleStart + index * partialFocusShiftInterval);
+              allTimers.push(focusTimer);
+            });
+            
+            // Добавляем паузу после неполного цикла, если оставшееся время больше базовой длительности
+            if (remainingTime > baseCycleDuration) {
+              const pauseTimer = setTimeout(() => {
+                if (focusableElements.length > 0) {
+                  focusableElements[focusableElements.length - 1].classList.remove('focus');
+                }
+              }, fullCycles * cycleTime + baseCycleDuration);
+              allTimers.push(pauseTimer);
+            }
+          } else {
+            // Если оставшееся время меньше базовой длительности,
+            // распределяем его между элементами
+            const partialFocusShiftInterval = remainingTime / focusableElements.length;
+            const cycleStart = fullCycles * cycleTime;
+            
+            focusableElements.forEach((element, index) => {
+              const focusTimer = setTimeout(() => {
+                if (isPaused) return;
+                if (index > 0) {
+                  focusableElements[index - 1].classList.remove('focus');
+                }
+                element.classList.add('focus');
+                playFocusSwitch('mid'); 
+              }, cycleStart + index * partialFocusShiftInterval);
+              allTimers.push(focusTimer);
+            });
+          }
+        }
+        
+        // Убедимся, что последний элемент остается в фокусе до конца
+        const finalFocusTimer = setTimeout(() => {
+          if (isPaused) return;
+          // Фокус остается на последнем элементе (центральной точке)
+          // Все остальные элементы теряют фокус
+          for (let i = 0; i < focusableElements.length - 1; i++) {
+            focusableElements[i].classList.remove('focus');
+          }
+          // Центральная точка остается в фокусе
+          finalDot.classList.add('focus');
+        }, durationMs - 2000); // За 2 секунды до окончания режима
+        allTimers.push(finalFocusTimer);
+      } else {
+        // Если длительность 2 минуты или меньше, используем стандартный алгоритм
+        const FOCUS_SHIFT_INTERVAL = durationMs / focusableElements.length;
+        
+        focusableElements.forEach((element, index) => {
+          const focusTimer = setTimeout(() => {
+            if (isPaused) return;
+            if (index > 0) {
+              focusableElements[index - 1].classList.remove('focus');
+            }
+            element.classList.add('focus');
+            playFocusSwitch('mid'); 
+          }, index * FOCUS_SHIFT_INTERVAL);
+          allTimers.push(focusTimer);
+        });
+        
+        // Убедимся, что последний элемент остается в фокусе до конца
+        const finalFocusTimer = setTimeout(() => {
+          if (isPaused) return;
+          // Фокус остается на последнем элементе (центральной точке)
+          // Все остальные элементы теряют фокус
+          for (let i = 0; i < focusableElements.length - 1; i++) {
+            focusableElements[i].classList.remove('focus');
+          }
+          // Центральная точка остается в фокусе
+          finalDot.classList.add('focus');
+        }, durationMs - 2000); // За 2 секунды до окончания режима
+        allTimers.push(finalFocusTimer);
+      }
 
       const shutters = document.getElementById('shutters');
       const freezeLead = 2000;
@@ -2128,9 +2468,9 @@
           isHintVisible = false;
         }
       };
-      freezeTimer = setTimeout(doFreeze, Math.max(0, totalDurationForMode));
-      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, totalDurationForMode + freezeLead));
-      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, totalDurationForMode + freezeLead + 2000));
+      freezeTimer = setTimeout(doFreeze, Math.max(0, durationMs));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
     }
 
 
@@ -2141,6 +2481,8 @@
 
       showCycleInfo('symbol');
       pauseButton.style.display = 'grid';
+      // Запускаем таймер обратного отсчета режима
+      startModeCountdownTimer(durationMs);
 
       const flipTheme = pick(0.10);
       setTheme(flipTheme);
@@ -2266,7 +2608,8 @@
 
     function showSymbol() {
       phase = 'symbol';
-      const showMs = randInt(90000, 120001);
+      // Используем настройку длительности режимов (в минутах)
+      const showMs = modeDuration * 60 * 1000;
       currentDrawMs = showMs;
       
       const intro = document.getElementById('intro');
@@ -2289,17 +2632,32 @@
       if (document.getElementById('modeDance').checked) availableModes.push('dance');
       if (document.getElementById('modeStars').checked) availableModes.push('stars');
       
-      let selectionPool = [...availableModes];
-      if (lastSelectedMode && availableModes.length > 1) {
-        selectionPool = availableModes.filter(mode => mode !== lastSelectedMode);
+      let selectedMode;
+      
+      // Используем настройку последовательности режимов
+      if (modeSequence === 'sequential' && availableModes.length > 1) {
+        // Последовательный порядок режимов
+        if (lastSelectedMode) {
+          const currentIndex = availableModes.indexOf(lastSelectedMode);
+          // Выбираем следующий режим в списке, или первый если текущий последний
+          selectedMode = availableModes[(currentIndex + 1) % availableModes.length];
+        } else {
+          // Если нет предыдущего режима, выбираем первый
+          selectedMode = availableModes[0];
+        }
+      } else {
+        // Случайный порядок режимов (по умолчанию)
+        let selectionPool = [...availableModes];
+        if (lastSelectedMode && availableModes.length > 1) {
+          selectionPool = availableModes.filter(mode => mode !== lastSelectedMode);
+        }
+        selectedMode = selectionPool[Math.floor(Math.random() * selectionPool.length)] || 'symbol';
       }
-
-      const selectedMode = selectionPool[Math.floor(Math.random() * selectionPool.length)] || 'symbol';
+      
       lastSelectedMode = selectedMode;
       
-      // Длительность режима "Мишень" зависит от количества элементов и не должна быть случайной
-      const targetModeDuration = 15 * 5000; // 15 шагов по 5 секунд
-      const duration = selectedMode === 'target' ? targetModeDuration : showMs;
+      // Для режима "Мишень" используем специальный алгоритм
+      const duration = selectedMode === 'target' ? showMs : showMs;
 
       switch (selectedMode) {
         case 'target': renderTargetMode(duration); break;
