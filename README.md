@@ -1,6 +1,6 @@
 # GLAZ — Eye Trainer / Тренажёр для глаз
 
-[📢 Telegram](https://t.me/glaz_reg) | [🇺🇸 English](#english) | [🇷🇺 Русский](#русский)
+[📢 Telegram](https://t.me/glaz_regen) | [🇺🇸 English](#english) | [🇷🇺 Русский](#русский)
 
 ---
 
@@ -258,6 +258,6 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## Support / Поддержка
 
-For questions or support, please visit: [https://t.me/glaz_reg](https://t.me/glaz_reg)
+For questions or support, please visit: [https://t.me/glaz_regen](https://t.me/glaz_regen)
 
-По вопросам или поддержке, пожалуйста, посетите: [https://t.me/glaz_reg](https://t.me/glaz_reg)
+По вопросам или поддержке, пожалуйста, посетите: [https://t.me/glaz_regen](https://t.me/glaz_regen)
