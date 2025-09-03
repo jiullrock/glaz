@@ -114,6 +114,12 @@
     @media (max-width: 600px) {
       .hud { font-size: 12px; padding: 6px 10px; }
     }
+    @keyframes gradientAnimation {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
     .intro {
       position: fixed;
       inset: 0;
@@ -122,7 +128,9 @@
       z-index: 1000;
       pointer-events: auto;
       color: #ffffff;
-      background: #000000;
+      background: linear-gradient(-45deg, #471a6c, #185276, #45457d);
+      background-size: 400% 400%;
+      animation: gradientAnimation 15s ease infinite;
       font-weight: 700;
       font-size: clamp(28px, 8vw, 96px);
       line-height: 1.1;
@@ -132,18 +140,45 @@
       transition: opacity .5s ease;
     }
     .intro.hide { opacity: 0; pointer-events: none; }
-    .intro small {
+    .intro-subtitle {
+      display: block;
+      margin-top: 12px;
+      font-weight: 500;
+      font-size: clamp(14px, 3vw, 20px);
+      opacity: 0.7;
+    }
+    .intro-modes-text {
       display: block;
       margin-top: 12px;
       font-weight: 500;
       font-size: clamp(12px, 2.5vw, 16px);
       opacity: 0.7;
     }
+    .telegram-link {
+      font-size: clamp(12px, 2vw, 14px);
+      opacity: 0.6;
+      margin-top: 20px;
+    }
+    .telegram-link a {
+      color: #dddddd;
+      text-decoration: none;
+      pointer-events: auto;
+    }
+    .telegram-link a:hover {
+      text-decoration: underline;
+      opacity: 1;
+    }
     .intro-content {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 24px;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 30px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
     #intro-settings {
       display: flex;
@@ -159,19 +194,20 @@
     #intro-settings label {
       white-space: nowrap;
       min-width: 120px;
-      justify-content: center;
-      text-align: center;
-      transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease;
+      justify-content: flex-start;
+      text-align: left;
+      transition: background-color 0.2s ease;
       flex: 0 0 calc(33.333% - 14px); /* Максимум 3 в ряд */
-      padding: 6px 10px;
+      padding: 10px 16px;
       border-radius: 8px;
-      background-color: rgba(255, 255, 255, 0.05);
+      background-color: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(5px);
     }
     #intro-settings label:hover {
-      transform: scale(1.05);
+      background-color: rgba(255, 255, 255, 0.15);
     }
     #intro-settings label:has(input:checked) {
-      background-color: rgba(255, 255, 255, 0.12);
+      background-color: rgba(255, 255, 255, 0.2);
     }
     #language-switch {
       opacity: 0.8;
@@ -200,7 +236,17 @@
       }
       #intro-settings label {
         min-width: 140px;
-        flex: 0 0 calc(33.333% - 16px); 
+        flex: 0 0 calc(33.333% - 16px);
+        justify-content: flex-start;
+        text-align: left;
+        padding: 12px 18px;
+      }
+      .intro-subtitle {
+        font-size: clamp(16px, 3.5vw, 24px);
+      }
+      .telegram-link {
+        font-size: clamp(11px, 2.2vw, 15px);
+        margin-top: 24px;
       }
     }
     
@@ -212,10 +258,13 @@
       }
       #intro-settings label {
         min-width: 110px;
-        flex: 0 0 calc(50% - 9px); 
+        flex: 0 0 calc(50% - 9px);
+        justify-content: flex-start;
+        text-align: left;
+        padding: 8px 14px;
       }
     }
-    #intro-settings label, #sound-toggle {
+    #intro-settings label, #sound-toggle, #hints-toggle {
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -224,12 +273,14 @@
     #intro-settings input[type="checkbox"], #soundCheckbox, #hintsCheckbox {
       width: 18px;
       height: 18px;
+      margin: 0;
+      vertical-align: middle;
     }
     #startButton {
       font-size: clamp(18px, 4vw, 24px);
       font-weight: 600;
       color: #000;
-      background-color: #eee;
+      background-color: #fff;
       border: none;
       padding: 12px 32px;
       border-radius: 12px;
@@ -237,10 +288,54 @@
       transition: background-color 0.2s ease;
     }
     #startButton:hover {
-      background-color: #fff;
+      background-color: #f5f5f5;
     }
     .intro a { color: #dddddd; text-decoration: none; pointer-events: auto; opacity: 0.8; }
     .intro a:hover { text-decoration: underline; opacity: 1; }
+    
+    /* Стили для popup с информацией о тренировке */
+    #trainingInfoPopup {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, sans-serif;
+    }
+    
+    #trainingInfoPopup h2 {
+      margin-top: 0;
+      text-align: center;
+      color: #333;
+    }
+    
+    #trainingInfoPopup ul {
+      padding-left: 20px;
+      margin: 10px 0;
+    }
+    
+    #trainingInfoPopup li {
+      margin-bottom: 8px;
+    }
+    
+    #launchTrainerBtn:hover {
+      background: #45a049;
+    }
+    
+    @keyframes titleGlow {
+      0% { text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+      50% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.5), 0 0 30px rgba(102, 126, 234, 0.4); }
+      100% { text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+    }
+    
+    @keyframes textShine {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+    
+    .main-title {
+      background: linear-gradient(to right, #fff, #a9a9ff, #fff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-size: 200% auto;
+      animation: titleGlow 4s ease-in-out infinite, textShine 3s linear infinite;
+    }
     
     #version-number {
       pointer-events: none;
@@ -253,6 +348,18 @@
         font-size: 8px !important;
         bottom: -6px !important;
         right: -8px !important;
+      }
+      #intro-title {
+        font-size: clamp(36px, 9vw, 100px) !important;
+      }
+      #intro-title .main-title {
+        font-size: clamp(40px, 10vw, 110px) !important;
+      }
+      #intro-title .intro-subtitle {
+        font-size: clamp(18px, 4vw, 26px) !important;
+      }
+      .telegram-link {
+        font-size: clamp(13px, 2.5vw, 16px) !important;
       }
     }
     
@@ -369,7 +476,7 @@
       inset: 0;
       display: none; /* Изначально скрыто */
       place-items: center;
-      background-color: rgba(0, 0, 0, 0.6);
+      background-color: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(8px);
       z-index: 2000;
       color: white;
@@ -470,13 +577,18 @@
   <div class="intro" id="intro">
     <div class="intro-content">
       <div id="intro-title" style="line-height: 1.1;">
-        <div style="position: relative; display: inline-block;">
-          GLAZ
+        <div style="position: relative; display: inline-block; font-size: inherit;">
+          <span class="main-title">GLAZ</span>
           <span id="version-number" style="position: absolute; bottom: -8px; right: -12px; font-size: 10px; opacity: 0.4; font-weight: 400;"></span>
         </div>
         <br>
-        <small style="font-size: clamp(14px, 3vw, 22px); opacity: 0.8;" data-ru="Тренажёр для глаз" data-en="Eye Trainer">Тренажёр для глаз</small>
+        <small class="intro-subtitle" style="opacity: 0.8;" data-ru="Тренажёр для глаз" data-en="Eye Trainer">Тренажёр для глаз</small>
       </div>
+	  <div id="language-switch" style="display: flex; gap: 12px; align-items: center; font-size: 14px;">
+        <label style="cursor: pointer;"><input type="radio" name="language" value="ru" checked> Русский</label>
+        <label style="cursor: pointer;"><input type="radio" name="language" value="en"> English</label>
+      </div>
+	  <small class="intro-modes-text" data-ru="Выбранные режимы будут переключаться:" data-en="Selected modes will switch:">Выбранные ниже режимы будут переключаться:</small>
       <div id="intro-settings">
           <label><input type="checkbox" id="modeSymbol" value="symbol" checked><span data-ru="Символы" data-en="Symbols">Символы</span></label>
           <label><input type="checkbox" id="modeTarget" value="target" checked><span data-ru="Мишень" data-en="Target">Мишень</span></label>
@@ -484,10 +596,6 @@
           <label><input type="checkbox" id="modeEmoji" value="emoji" checked><span data-ru="Эмодзи" data-en="Emoji">Эмодзи</span></label>
           <label><input type="checkbox" id="modeDance" value="dance" checked><span data-ru="Танец" data-en="Dance">Танец</span></label>
           <label><input type="checkbox" id="modeStars" value="stars" checked><span data-ru="Звёзды" data-en="Stars">Звёзды</span></label>
-      </div>
-      <div id="language-switch" style="display: flex; gap: 12px; align-items: center; font-size: 14px;">
-        <label style="cursor: pointer;"><input type="radio" name="language" value="ru" checked> Русский</label>
-        <label style="cursor: pointer;"><input type="radio" name="language" value="en"> English</label>
       </div>
       <button id="startButton" data-ru="Старт" data-en="Start">Старт</button>
       <label id="sound-toggle" style="font-size: 16px; font-weight: 500;">
@@ -498,8 +606,7 @@
         <input type="checkbox" id="hintsCheckbox" checked>
         <span data-ru="Показывать подсказки" data-en="Show hints">Показывать подсказки</span>
       </label>
-      <small data-ru="Выбранные режимы будут переключаться" data-en="Selected modes will switch">Выбранные режимы будут переключаться</small>
-      <small><a href="https://t.me/glaz_reg" target="_blank" rel="noopener">https://t.me/glaz_reg</a></small>
+      <small class="telegram-link"><a href="https://t.me/glaz_regen" target="_blank" rel="noopener"><span data-ru="Помощь в Telegram" data-en="https://t.me/glaz_regen">Помощь в Telegram</span></a></small>
     </div>
   </div>
   <div class="centerOverlay" id="center"></div>
@@ -518,11 +625,67 @@
     </svg>
   </div>
 
+  <!-- Popup for training information and warnings -->
+  <div id="trainingInfoPopup" style="position: fixed; inset: 0; display: none; place-items: center; z-index: 1100; background: rgba(0, 0, 0, 0.7);">
+    <div style="background: rgba(255, 255, 255, 0.95); color: #000; padding: 30px; border-radius: 20px; max-width: 90vw; max-height: 90vh; overflow-y: auto; width: 500px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+      <h2 style="margin-top: 0; text-align: center;" data-ru="Важная информация" data-en="Important Information">Важная информация</h2>
+      <div id="trainingInfoContent" style="font-size: 16px; line-height: 1.5;">
+        <h3 data-ru="Перед началом тренировки убедитесь:" data-en="Before starting the training, make sure:">
+          Перед началом тренировки убедитесь:
+        </h3>
+        <ul style="padding-left: 20px;">
+          <li data-ru="Экран чистый, яркий и без трещин" data-en="The screen is clean, bright and without cracks">
+            Экран чистый, яркий и без трещин
+          </li>
+          <li data-ru="Вы сидите на комфортном расстоянии, чтобы были четко видны все резкие детали режимов" data-en="You are sitting at a comfortable distance where all sharp details of the modes are clearly visible">
+            Вы сидите на комфортном расстоянии, чтобы были четко видны все резкие детали режимов
+          </li>
+        </ul>
+        <h3 data-ru="Польза для зрения:" data-en="Benefits for vision:">
+          Польза для зрения:
+        </h3>
+        <ul style="padding-left: 20px;">
+          <li data-ru="Для близоруких: тренирует фокусировку на дальнем плане" data-en="For nearsighted people: trains focus on distant objects">
+            Для близоруких: тренирует фокусировку на дальнем плане
+          </li>
+          <li data-ru="Для дальнозорких: тренирует фокусировку на ближнем плане" data-en="For farsighted people: trains focus on close objects">
+            Для дальнозорких: тренирует фокусировку на ближнем плане
+          </li>
+        </ul>
+        <h3 data-ru="Предостережения:" data-en="Warnings:">
+          Предостережения:
+        </h3>
+        <ul style="padding-left: 20px;">
+          <li data-ru="Не рекомендуется людям с эпилепсией" data-en="Not recommended for people with epilepsy">
+            Не рекомендуется людям с эпилепсией
+          </li>
+          <li data-ru="При дискомфорте стоит перезапустить тренажер и снять галочки с неподходящих режимов" data-en="If you feel discomfort, restart the trainer and uncheck unsuitable modes">
+            При дискомфорте стоит перезапустить тренажер и снять галочки с неподходящих режимов
+          </li>
+        </ul>
+        <h3 data-ru="Рекомендации по применению:" data-en="Usage recommendations:">
+          Рекомендации по применению:
+        </h3>
+        <ul style="padding-left: 20px;">
+          <li data-ru="Рекомендуется выполнять 3-4 режима по 2-4 минуты каждый, несколько раз в день" data-en="It is recommended to perform 3-4 modes for 2-4 minutes each, several times a day">
+            Рекомендуется выполнять 3-4 режима по 2-4 минуты каждый, несколько раз в день
+          </li>
+          <li data-ru="Упражнения не должны приносить глазам никакого дискомфорта. Если приносит, стоит разобраться в принципе работы или прекратить упражнения" data-en="The exercises should not cause any discomfort to the eyes. If they do, you should understand the principle of operation or stop the exercises">
+            Упражнения не должны приносить глазам никакого дискомфорта. Если приносит, стоит разобраться в принципе работы или прекратить упражнения
+          </li>
+        </ul>
+      </div>
+      <button id="launchTrainerBtn" style="display: block; margin: 25px auto 0; padding: 12px 30px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: background 0.3s;">
+        <span data-ru="Запустить тренажёр" data-en="Launch Trainer">Запустить тренажёр</span>
+      </button>
+    </div>
+  </div>
+
   <script>
   (function() {
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
-    const APP_VERSION = 'v1.2.7';
+    const APP_VERSION = 'v1.3.0';
     // *** КОНЕЦ КОНФИГУРАЦИИ ВЕРСИИ ***
     
     const app = document.getElementById('app');
@@ -1135,7 +1298,7 @@
                 sequential: 'Последовательный',
                 modeDuration: 'Длительность режимов:',
                 minutes: 'мин',
-                noBreakMode: 'Без отдыха'
+                noBreakMode: 'Чередовать режимы без экрана отдыха'
             },
             en: {
                 title: 'Pause',
@@ -1147,7 +1310,7 @@
                 sequential: 'Sequential',
                 modeDuration: 'Mode Duration:',
                 minutes: 'min',
-                noBreakMode: 'No break'
+                noBreakMode: 'No break screen'
             }
         };
         const langTexts = texts[currentLanguage];
@@ -1174,7 +1337,7 @@
                             <input type="checkbox" id="noBreakModeCheckbox" ${noBreakMode ? 'checked' : ''} style="margin-right: 6px;">
                             <span data-ru="${langTexts.noBreakMode}" data-en="${langTexts.noBreakMode}">${langTexts.noBreakMode}</span>
                         </label>
-                        <div style="margin-bottom: 8px; font-weight: 600;">${langTexts.modeDuration}</div>
+                        <div style="margin-top: 20px; margin-bottom: 8px; font-weight: 600;">${langTexts.modeDuration}</div>
                         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                             ${[2, 4, 6, 8, 10].map(minutes => `
                                 <label style="display: flex; align-items: center; cursor: pointer; padding: 6px 12px; background: ${modeDuration === minutes ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)'}; border-radius: 6px; transition: background 0.2s ease;">
@@ -1187,7 +1350,7 @@
                     <div style="margin-bottom: 20px; text-align: center;">
                         <label style="display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px;">
                             <input type="checkbox" id="showModeCountdownCheckbox" ${showModeCountdown ? 'checked' : ''} style="margin-right: 6px;">
-                            <span data-ru="Показывать таймер" data-en="Show timer">Показывать таймер</span>
+                            <span data-ru="Показывать таймер до конца режима" data-en="Show timer">Показывать таймер до конца режима</span>
                         </label>
                     </div>
                     <button id="resumeBtn">${langTexts.continue}</button>
@@ -1441,7 +1604,7 @@
       clearAllTimersAndLoops();
       phaseEndAt = performance.now() + durationMs + 2000 + 2000;
       clearSymbol(); updateHUD(); 
-      
+
       showCycleInfo('dance');
       
       setTheme(false);
@@ -1464,6 +1627,8 @@
       
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
+      const centerX = vw / 2;
+      const centerY = vh / 2;
       
       [back, mid, front].forEach(el => {
         if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
@@ -1512,23 +1677,271 @@
                   waveOffsetX: rand(0, Math.PI * 2),
                   waveAmplitudeY: rand(-15, 15),
                   waveFrequencyY: rand(0.01, 0.05),
-                  waveOffsetY: rand(0, Math.PI * 2)
+                  waveOffsetY: rand(0, Math.PI * 2),
+                  // Vortex properties
+                  inVortex: false,
+                  vortexAngle: 0,
+                  vortexRadius: 0,
+                  vortexSpeed: 0,
+                  vortexTargetRadius: 0,
+                  vortexStartTime: 0,
+                  vortexDuration: 0,
+                  // Explosion properties
+                  isExploding: false,
+                  explosionStartTime: 0,
+                  explosionDuration: 0,
+                  explosionVx: 0,
+                  explosionVy: 0,
+                  explosionSpeed: 0,
+                  // Smooth acceleration/deceleration properties
+                  vortexAcceleration: 0,
+                  vortexMaxSpeed: 0
               });
           }
           dotLayers.push(dots);
       });
 
-      function animateDance() {
-        if (!animationRunning) return;
+      // Animation cycle variables
+      let lastCycleTime = performance.now();
+      const modeStartTime = performance.now(); // Track when this mode started
+      const cycleDuration = 60000; // 60 seconds total cycle (minimum 1 minute between vortex phases)
+      const explosionDuration = 2000; // 2 seconds explosion
+      const vortexDuration = 20000; // 20 seconds vortex
+      let animationCycleActive = false;
+      let cycleSchedulerTimer = null;
 
-        canvasLayers.forEach((layer, index) => {
-            const ctx = layer.ctx;
-            const dots = dotLayers[index];
+      // Calculate how many complete cycles can fit in the mode duration
+      // and adjust timing to avoid ending during vortex
+      function calculateSafeCycleStart() {
+          const remainingTime = durationMs;
+          const completeCycles = Math.floor(remainingTime / cycleDuration);
+          
+          if (completeCycles < 1) {
+              // If less than one complete cycle fits, don't start any cycles
+              return null;
+          }
+          
+          // Start first cycle after exactly 1 minute (60 seconds) from mode start
+          const firstCycleDelay = 60000; // 1 minute delay for first vortex
+          const timeNeededForFirstCycle = firstCycleDelay + cycleDuration;
+          
+          if (remainingTime < timeNeededForFirstCycle) {
+              // Not enough time for even the first cycle with proper delay
+              return null;
+          }
+          
+          return firstCycleDelay;
+      }
 
-            ctx.clearRect(0, 0, vw, vh);
-            ctx.fillStyle = noiseColor;
+      // Schedule animation cycles with safe timing
+      function scheduleAnimationCycles() {
+          if (!animationRunning) return;
+          
+          const safeStartDelay = calculateSafeCycleStart();
+          if (safeStartDelay === null) {
+              // Not enough time for complete cycles, skip animation cycles
+              return;
+          }
+          
+          // Clear any existing scheduler
+          if (cycleSchedulerTimer) {
+              clearTimeout(cycleSchedulerTimer);
+              cycleSchedulerTimer = null;
+          }
+          
+          // Schedule first cycle (with 1-minute delay)
+          cycleSchedulerTimer = setTimeout(() => {
+              if (!animationRunning) return;
+              
+              startAnimationCycle();
+              
+              // Schedule subsequent cycles (every 60 seconds)
+              function scheduleNext() {
+                  if (!animationRunning) return;
+                  
+                  const now = performance.now();
+                  const elapsedTime = now - modeStartTime;
+                  const timeLeft = durationMs - elapsedTime;
+                  const timeNeededForCompleteCycle = cycleDuration + 5000; // Add buffer
+                  
+                  if (timeLeft >= timeNeededForCompleteCycle) {
+                      cycleSchedulerTimer = setTimeout(() => {
+                          if (!animationRunning) return;
+                          startAnimationCycle();
+                          scheduleNext(); // Schedule the next cycle
+                      }, cycleDuration);
+                  }
+              }
+              
+              scheduleNext();
+          }, safeStartDelay);
+          
+          // Store timer for cleanup
+          if (cycleSchedulerTimer) {
+              window._focusTimers.push(cycleSchedulerTimer);
+          }
+      }
+      
+      function startAnimationCycle() {
+          if (animationCycleActive) return; // Don't start if already active
+      
+          animationCycleActive = true;
+      
+          // Set focus to back layer (smallest dots) during vortex
+          setFocus('back');
+      
+          // Apply vortex effect to all particles
+          dotLayers.forEach((dots, layerIndex) => {
+              const layerIntensity = [0.7, 0.85, 1.0][layerIndex]; // Back, Mid, Front
+              dots.forEach(dot => {
+                  // All particles participate in the vortex
+                  dot.inVortex = true;
+                  dot.vortexStartTime = performance.now();
+                  dot.vortexDuration = vortexDuration;
+                  dot.vortexAngle = Math.atan2(dot.baseY - centerY, dot.baseX - centerX);
+                  dot.vortexRadius = Math.sqrt(Math.pow(dot.baseX - centerX, 2) + Math.pow(dot.baseY - centerY, 2));
+                  // Make target radius more varied to prevent clustering
+                  dot.vortexTargetRadius = Math.random() * Math.min(vw, vh) * 0.3 * layerIntensity;
+                  dot.vortexMaxSpeed = (0.04 + Math.random() * 0.1) * layerIntensity;
+                  dot.vortexAcceleration = dot.vortexMaxSpeed / (dot.vortexDuration * 0.2);
+                  dot.vortexSpeed = 0;
+              });
+          });
+      
+          // End vortex and trigger explosion after 20 seconds
+          const endVortexTimer = setTimeout(() => {
+              // Trigger explosion
+              dotLayers.forEach((dots, layerIndex) => {
+                  const layerIntensity = [1.0, 1.5, 2.0][layerIndex]; // Back, Mid, Front
+                  dots.forEach(dot => {
+                      // Exit vortex state
+                      dot.inVortex = false;
+                      
+                      // Set explosion properties
+                      dot.isExploding = true;
+                      dot.explosionStartTime = performance.now();
+                      dot.explosionDuration = explosionDuration;
+                      
+                      // Calculate explosion direction away from center
+                      const angle = Math.atan2(dot.baseY - centerY, dot.baseX - centerX);
+                      const speed = (3 + Math.random() * 5) * layerIntensity;
+                      dot.explosionVx = Math.cos(angle) * speed;
+                      dot.explosionVy = Math.sin(angle) * speed;
+                  });
+          });
+          
+          // Set focus to random layer after vortex ends (beginning of explosion)
+          setFocus(focusNames[randInt(0, 3)]);
+          
+          // End explosion and return to normal movement
+          const endExplosionTimer = setTimeout(() => {
+              dotLayers.forEach(dots => {
+                  dots.forEach(dot => {
+                      if (dot.isExploding) {
+                          dot.isExploding = false;
+                          
+                          // Give new random direction when exiting explosion
+                          const angle = Math.random() * Math.PI * 2;
+                          const speed = rand(layerConfigs[dotLayers.indexOf(dots)].minSpeed, layerConfigs[dotLayers.indexOf(dots)].maxSpeed);
+                          dot.vx = Math.cos(angle) * speed;
+                          dot.vy = Math.sin(angle) * speed;
+                      }
+                  });
+              });
+              
+              // After explosion ends, particles fly chaotically for 20 seconds
+              // Resume normal random focus switching immediately
+              animationCycleActive = false;
+              
+              const chaoticMovementTimer = setTimeout(() => {
+                  // Mark cycle as complete and update last cycle time
+                  lastCycleTime = performance.now();
+              }, 20000); // 20 seconds of chaotic movement
+              
+              window._focusTimers.push(chaoticMovementTimer);
+          }, explosionDuration);
+          
+          window._focusTimers.push(endExplosionTimer);
+      }, vortexDuration);
+      
+      window._focusTimers.push(endVortexTimer);
+  }
 
-            dots.forEach(dot => {
+  function animateDance() {
+    if (!animationRunning) return;
+
+    const currentTime = performance.now();
+    
+    canvasLayers.forEach((layer, index) => {
+        const ctx = layer.ctx;
+        const dots = dotLayers[index];
+
+        ctx.clearRect(0, 0, vw, vh);
+        ctx.fillStyle = noiseColor;
+
+        dots.forEach(dot => {
+            // Handle explosion effect
+            if (dot.isExploding) {
+                const elapsed = currentTime - dot.explosionStartTime;
+                const progress = Math.min(1, elapsed / dot.explosionDuration);
+                
+                // Move particle in explosion direction
+                const speedFactor = 1 - progress; // Slow down as explosion ends
+                dot.baseX += dot.explosionVx * speedFactor;
+                dot.baseY += dot.explosionVy * speedFactor;
+                
+                // Handle screen boundaries during explosion
+                if (dot.baseX < 0) dot.baseX = vw;
+                if (dot.baseX > vw) dot.baseX = 0;
+                if (dot.baseY < 0) dot.baseY = vh;
+                if (dot.baseY > vh) dot.baseY = 0;
+            }
+            // Handle vortex effect with smooth acceleration and deceleration
+            else if (dot.inVortex) {
+                const elapsed = currentTime - dot.vortexStartTime;
+                const progress = Math.min(1, elapsed / dot.vortexDuration);
+                
+                // Smooth acceleration and deceleration curve for even smoother movement
+                let speedFactor;
+                if (progress < 0.2) {
+                    // Acceleration phase (first 20% of vortex)
+                    speedFactor = progress * 5; // 0 to 1
+                } else if (progress > 0.8) {
+                    // Deceleration phase (last 20% of vortex)
+                    speedFactor = 1 - (progress - 0.8) * 5; // 1 to 0
+                } else {
+                    // Full speed phase (middle 60% of vortex)
+                    speedFactor = 1;
+                }
+                
+                // Apply acceleration to speed for smoother transitions
+                if (progress < 0.2) {
+                    dot.vortexSpeed = Math.min(dot.vortexMaxSpeed, dot.vortexSpeed + dot.vortexAcceleration);
+                } else if (progress > 0.8) {
+                    dot.vortexSpeed = Math.max(0, dot.vortexSpeed - dot.vortexAcceleration);
+                }
+                
+                if (progress >= 1) {
+                    // Exit vortex
+                    dot.inVortex = false;
+                    // Particles should continue from their current position
+                    // Give new random direction when exiting with normal speed
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = rand(layerConfigs[index].minSpeed, layerConfigs[index].maxSpeed); // Normal speed
+                    dot.vx = Math.cos(angle) * speed;
+                    dot.vy = Math.sin(angle) * speed;
+                    dot.vortexSpeed = 0;
+                } else {
+                    // Update vortex position with smooth speed
+                    // Spiral inward toward center with enhanced smoothness and doubled speed during vortex
+                    const currentRadius = dot.vortexRadius + (dot.vortexTargetRadius - dot.vortexRadius) * progress;
+                    dot.vortexAngle += dot.vortexSpeed * speedFactor * 2; // Doubled rotation speed during vortex for more dynamic effect
+                    
+                    dot.baseX = centerX + Math.cos(dot.vortexAngle) * currentRadius;
+                    dot.baseY = centerY + Math.sin(dot.vortexAngle) * currentRadius;
+                }
+            } else {
+                // Normal movement with normal speed (no change)
                 dot.baseX += dot.vx;
                 dot.baseY += dot.vy;
 
@@ -1536,76 +1949,94 @@
                 if (dot.baseX > vw) dot.baseX = 0;
                 if (dot.baseY < 0) dot.baseY = vh;
                 if (dot.baseY > vh) dot.baseY = 0;
+            }
 
-                const waveX = dot.waveAmplitudeX * Math.sin(dot.baseY * dot.waveFrequencyX + dot.waveOffsetX);
-                const waveY = dot.waveAmplitudeY * Math.sin(dot.baseX * dot.waveFrequencyY + dot.waveOffsetY);
-                
-                const finalX = dot.baseX + waveX;
-                const finalY = dot.baseY + waveY;
+            const waveX = dot.waveAmplitudeX * Math.sin(dot.baseY * dot.waveFrequencyX + dot.waveOffsetX);
+            const waveY = dot.waveAmplitudeY * Math.sin(dot.baseX * dot.waveFrequencyY + dot.waveOffsetY);
+            
+            const finalX = dot.baseX + waveX;
+            const finalY = dot.baseY + waveY;
 
-                ctx.beginPath();
-                ctx.arc(finalX, finalY, dot.size / 2, 0, Math.PI * 2);
-                ctx.fill();
-            });
+            ctx.beginPath();
+            ctx.arc(finalX, finalY, dot.size / 2, 0, Math.PI * 2);
+            ctx.fill();
         });
+    });
 
-        requestAnimationFrame(animateDance);
-      }
-      
-      animateDance();
-      
-      function setFocus(target) {
-        const map = { back, mid, front };
-        Object.entries(map).forEach(([key, el]) => {
-          if (!el) return;
-          if (key === target) {
-            el.classList.add('focus');
-            el.classList.remove('unfocus');
-            playFocusSwitch(target);
-          } else {
-            el.classList.add('unfocus');
-            el.classList.remove('focus');
-          }
-        });
-        const center = document.getElementById('center');
-        if (center) {
-          center.classList.toggle('focusViz', target === 'mid');
-          center.classList.toggle('unfocusViz', target !== 'mid');
-        }
-      }
-      setFocus('mid');
-      
-      const focusNames = ['mid', 'back', 'front'];
-      const nSwitches = Math.max(3, Math.floor(durationMs / 2000));
-      let lastFocus = 'mid';
-      const switchTimers = [];
-      for (let i = 0; i < nSwitches; i++) {
-        let next;
-        do {
-          next = focusNames[randInt(0, 3)];
-        } while (next === lastFocus);
-        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800);
-        switchTimers.push(setTimeout(() => setFocus(next), Math.max(0, at)));
-        lastFocus = next;
-      }
-      window._focusTimers.push(...switchTimers);
-      
-      const center = document.getElementById('center');
-      if (center) {
-        center.classList.remove('unfocusViz');
-        center.classList.add('focusViz');
-        center.innerHTML = ``;
-      }
-      
-      const shutters = document.getElementById('shutters');
-      const freezeLead = 2000;
-      freezeTimer = setTimeout(() => { 
-          animationRunning = false;
-          stopContinuousNoise();
-      }, Math.max(0, durationMs));
-      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
-      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+    requestAnimationFrame(animateDance);
+}
+
+// Start scheduling animation cycles
+scheduleAnimationCycles();
+
+// Start animation loop
+animateDance();
+
+function setFocus(target) {
+const map = { back, mid, front };
+Object.entries(map).forEach(([key, el]) => {
+  if (!el) return;
+  if (key === target) {
+    el.classList.add('focus');
+    el.classList.remove('unfocus');
+    playFocusSwitch(target);
+  } else {
+    el.classList.add('unfocus');
+    el.classList.remove('focus');
+  }
+});
+const center = document.getElementById('center');
+if (center) {
+  center.classList.toggle('focusViz', target === 'mid');
+  center.classList.toggle('unfocusViz', target !== 'mid');
+}
+}
+
+setFocus('back');
+
+const focusNames = ['mid', 'back', 'front'];
+const nSwitches = Math.max(3, Math.floor(durationMs / 2000));
+let lastFocus = 'back';
+const switchTimers = [];
+for (let i = 0; i < nSwitches; i++) {
+  let next;
+  do {
+    next = focusNames[randInt(0, 3)];
+  } while (next === lastFocus);
+  const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800);
+  switchTimers.push(setTimeout(() => {
+    // Only allow random focus switching when not in vortex phase
+    if (!animationCycleActive) {
+      setFocus(next);
+      lastFocus = next;
     }
+  }, Math.max(0, at)));
+  lastFocus = next;
+}
+window._focusTimers.push(...switchTimers);
+
+const center = document.getElementById('center');
+if (center) {
+center.classList.remove('unfocusViz');
+center.classList.add('focusViz');
+center.innerHTML = ``;
+}
+
+const shutters = document.getElementById('shutters');
+const freezeLead = 2000;
+freezeTimer = setTimeout(() => { 
+    animationRunning = false;
+    // Stop any ongoing animation cycles immediately when mode ends
+    animationCycleActive = false;
+    if (cycleSchedulerTimer) {
+        clearTimeout(cycleSchedulerTimer);
+        cycleSchedulerTimer = null;
+    }
+    stopContinuousNoise();
+}, Math.max(0, durationMs));
+shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+}
 
     function renderStarsMode(durationMs) {
       clearAllTimersAndLoops();
@@ -2535,6 +2966,10 @@
       }
 
       const strokeColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#000';
+      
+      // Variables to store symbol wrappers for redrawing
+      let symbolWrappers = [];
+      
       function mountTo(layerEl, scale) {
         const wrap = document.createElement('div');
         wrap.className = 'symbolWrapper';
@@ -2544,13 +2979,36 @@
         const svg = createGlyphSVG(sizePx, strokeColor);
         wrap.appendChild(svg);
         layerEl.appendChild(wrap);
-        animateGlyph(svg, durationMs);
+        // Animate for 1 minute (60000ms)
+        animateGlyph(svg, 60000);
         return wrap;
       }
 
-      mountTo(back, 0.8);
-      mountTo(mid, 1.0);
-      mountTo(front, 1.25);
+      // Function to create and animate symbols
+      function createAndAnimateSymbols() {
+        // Clear existing symbols
+        symbolWrappers.forEach(wrapper => {
+          if (wrapper && wrapper.parentNode) {
+            wrapper.parentNode.removeChild(wrapper);
+          }
+        });
+        symbolWrappers = [];
+        
+        // Create new symbols
+        symbolWrappers.push(mountTo(back, 0.8));
+        symbolWrappers.push(mountTo(mid, 1.0));
+        symbolWrappers.push(mountTo(front, 1.25));
+      }
+      
+      // Initial symbol creation
+      createAndAnimateSymbols();
+      
+      // Redraw symbols every minute until mode duration ends
+      const redrawInterval = setInterval(() => {
+        if (performance.now() < phaseEndAt - 2000 - 2000) {
+          createAndAnimateSymbols();
+        }
+      }, 60000);
 
       if (layersRoot) {
         requestAnimationFrame(() => { layersRoot.style.opacity = '1'; });
@@ -2584,27 +3042,25 @@
         centerEl.classList.toggle('unfocusViz', initialTarget !== 'mid');
       }
 
-      const focusPlan = ['mid', 'back', 'front'];
-      const extraSwitches = randInt(1, 3);
-      for (let i=0;i<extraSwitches;i++) {
-        let nextLayer;
-        const lastInPlan = focusPlan[focusPlan.length - 1];
-        do {
-          const r = Math.random();
-          nextLayer = r < 0.33 ? 'mid' : (r < 0.66 ? 'back' : 'front');
-        } while (nextLayer === lastInPlan);
-        focusPlan.push(nextLayer);
-      }
-      let spent = 0;
+      // Change focus every 10 seconds
+      const focusNames = ['mid', 'back', 'front'];
+      const focusInterval = 10000; // 10 seconds
+      let lastFocus = 'mid';
       const switchTimers = [];
-      focusPlan.forEach((layerName, idx) => {
-        const totalSwitches = focusPlan.length;
-        const slice = Math.floor(durationMs / (totalSwitches + 1));
-        spent += slice;
-        const at = spent + randInt(-500, 500);
-        switchTimers.push(setTimeout(() => setFocus(layerName), Math.max(0, at)));
-      });
-      window._focusTimers.push(...switchTimers);
+      
+      // Set up recurring focus changes
+      const focusChangeTimer = setInterval(() => {
+        let next;
+        do {
+          next = focusNames[randInt(0, 3)];
+        } while (next === lastFocus);
+        setFocus(next);
+        lastFocus = next;
+      }, focusInterval);
+      
+      // Store timer for cleanup
+      window._focusTimers.push(focusChangeTimer);
+      window._focusTimers.push(redrawInterval);
 
       startTicking();
 
@@ -2921,9 +3377,42 @@
       
       startButton.addEventListener('click', (e) => {
         e.stopPropagation();
-        showSymbol();
-        if (soundEnabled && !audioCtx) initAudio();
+        // Проверяем, включены ли подсказки
+        if (hintsEnabled) {
+          // Показываем popup с информацией
+          showTrainingInfoPopup();
+        } else {
+          // Если подсказки выключены, запускаем тренировку напрямую
+          showSymbol();
+          if (soundEnabled && !audioCtx) initAudio();
+        }
       });
+
+      // Функция для показа popup с информацией о тренировке
+      function showTrainingInfoPopup() {
+        const popup = document.getElementById('trainingInfoPopup');
+        if (popup) {
+          popup.style.display = 'grid';
+          
+          // Обновляем язык в popup
+          updateLanguage(currentLanguage);
+          
+          // Добавляем обработчик для кнопки запуска
+          const launchBtn = document.getElementById('launchTrainerBtn');
+          if (launchBtn) {
+            // Удаляем предыдущие обработчики, чтобы избежать дублирования
+            const newBtn = launchBtn.cloneNode(true);
+            launchBtn.parentNode.replaceChild(newBtn, launchBtn);
+            
+            newBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              popup.style.display = 'none';
+              showSymbol();
+              if (soundEnabled && !audioCtx) initAudio();
+            });
+          }
+        }
+      }
 
       validateCheckboxes();
     }
