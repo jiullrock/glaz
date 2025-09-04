@@ -1787,9 +1787,6 @@
       
           animationCycleActive = true;
       
-          // Set focus to back layer (smallest dots) during vortex
-          setFocus('back');
-      
           // Apply vortex effect to all particles
           dotLayers.forEach((dots, layerIndex) => {
               const layerIntensity = [0.7, 0.85, 1.0][layerIndex]; // Back, Mid, Front
@@ -1807,6 +1804,30 @@
                   dot.vortexSpeed = 0;
               });
           });
+      
+          // For the first 17 seconds of vortex, allow random focus switching
+          setFocus(focusNames[randInt(0, 3)]);
+          
+          // Schedule focus changes during the first 17 seconds of vortex
+          const focusSwitchInterval = 2000; // Switch focus every 2 seconds
+          let focusSwitchCount = 0;
+          const maxFocusSwitches = Math.floor(17000 / focusSwitchInterval); // 17 seconds / 2 seconds = 8-9 switches
+          
+          const focusSwitchTimer = setInterval(() => {
+              if (focusSwitchCount < maxFocusSwitches) {
+                  setFocus(focusNames[randInt(0, 3)]);
+                  focusSwitchCount++;
+              }
+          }, focusSwitchInterval);
+          
+          window._focusTimers.push(focusSwitchTimer);
+          
+          // At 17 seconds into vortex (3 seconds before explosion), fix focus on back layer
+          const fixFocusTimer = setTimeout(() => {
+              setFocus('back');
+          }, 17000);
+          
+          window._focusTimers.push(fixFocusTimer);
       
           // End vortex and trigger explosion after 20 seconds
           const endVortexTimer = setTimeout(() => {
@@ -1992,11 +2013,11 @@ if (center) {
 }
 }
 
-setFocus('back');
+setFocus('mid');
 
 const focusNames = ['mid', 'back', 'front'];
 const nSwitches = Math.max(3, Math.floor(durationMs / 2000));
-let lastFocus = 'back';
+let lastFocus = 'mid';
 const switchTimers = [];
 for (let i = 0; i < nSwitches; i++) {
   let next;
@@ -2141,18 +2162,24 @@ phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'
         }
       }
       setFocus('mid');
-      
+
       const focusNames = ['mid', 'back', 'front'];
       const nSwitches = Math.max(3, Math.floor(durationMs / 2000));
-      let lastFocus = 'mid';
+      let lastFocus = 'back';
       const switchTimers = [];
       for (let i = 0; i < nSwitches; i++) {
         let next;
         do {
           next = focusNames[randInt(0, 3)];
         } while (next === lastFocus);
-        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800); 
-        switchTimers.push(setTimeout(() => setFocus(next), Math.max(0, at)));
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800);
+        switchTimers.push(setTimeout(() => {
+          // Only allow random focus switching when not in vortex phase
+          if (!animationCycleActive) {
+            setFocus(next);
+            lastFocus = next;
+          }
+        }, Math.max(0, at)));
         lastFocus = next;
       }
       window._focusTimers.push(...switchTimers);
