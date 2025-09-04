@@ -2174,11 +2174,8 @@ phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'
         } while (next === lastFocus);
         const at = Math.floor((i + 1) * durationMs / (nSwitches + 1)) + randInt(-800, 800);
         switchTimers.push(setTimeout(() => {
-          // Only allow random focus switching when not in vortex phase
-          if (!animationCycleActive) {
-            setFocus(next);
-            lastFocus = next;
-          }
+          setFocus(next);
+          lastFocus = next;
         }, Math.max(0, at)));
         lastFocus = next;
       }
