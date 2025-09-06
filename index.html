@@ -2,7 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="format-detection" content="address=no" />
+  <meta name="theme-color" content="#000000" />
+  <!-- Force hardware acceleration for smoother animations -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>GLAZ — тренажёр для глаз</title>
   <style>
     :root {
@@ -27,6 +32,32 @@
       text-rendering: optimizeSpeed;
     }
     
+    /* Оптимизации для четкого рендеринга эмодзи */
+    .symbolWrapper:not(canvas) {
+      /* Ensure text-based emojis use vector rendering */
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      font-feature-settings: "liga" 1, "dlig" 1, "hlig" 1;
+    }
+    /* Vector rendering optimizations */
+    .symbolWrapper {
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+      position: absolute;
+      will-change: transform;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      overflow: visible; /* Prevent clipping of emojis */
+      -webkit-text-size-adjust: 100%;
+      -moz-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+    
     /* Дополнительные оптимизации для высокого DPR */
     @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
       canvas {
@@ -34,6 +65,36 @@
         image-rendering: optimize-contrast;
         image-rendering: crisp-edges;
       }
+      
+      .symbolWrapper {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        /* Vector rendering enhancements for high-DPI screens */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "liga" 1, "dlig" 1, "hlig" 1;
+      }
+    }
+    
+    /* Specific rule for emoji elements to ensure vector rendering */
+    .symbolWrapper:not(canvas),
+    .symbolWrapper:not(canvas) * {
+      /* Force vector rendering for emojis */
+      image-rendering: -webkit-optimize-contrast !important;
+      image-rendering: crisp-edges !important;
+      -webkit-font-smoothing: antialiased !important;
+      -moz-osx-font-smoothing: grayscale !important;
+      text-rendering: optimizeLegibility !important;
+      font-feature-settings: "liga" 1, "dlig" 1, "hlig" 1 !important;
+      /* Prevent rasterization */
+      -webkit-transform: translateZ(0);
+      -moz-transform: translateZ(0);
+      -ms-transform: translateZ(0);
+      -o-transform: translateZ(0);
+      transform: translateZ(0);
     }
     
     /* Оптимизации для мобильных устройств */
@@ -43,10 +104,25 @@
         backface-visibility: hidden;
         perspective: 1000;
       }
+      
+      .symbolWrapper {
+        transform: translateZ(0); /* Аппаратное ускорение */
+        backface-visibility: hidden;
+        perspective: 1000;
+        /* Дополнительные оптимизации для четкости на мобильных устройствах */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "liga" 1, "dlig" 1, "hlig" 1;
+        -webkit-text-size-adjust: 100%;
+        -moz-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
     }
     
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body { height: 100%; overflow: hidden; }
     body {
       margin: 0;
       background: var(--bg);
@@ -55,7 +131,39 @@
       overflow: hidden;
       touch-action: manipulation;
       user-select: none;
+      /* Mobile-specific optimizations for sharper rendering */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeSpeed;
     }
+    
+    /* Оптимизации для мобильных устройств */
+    @media (max-width: 768px) {
+      body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "liga" 1;
+      }
+      
+      canvas {
+        transform: translateZ(0); /* Аппаратное ускорение */
+        backface-visibility: hidden;
+        perspective: 1000;
+      }
+      
+      .symbolWrapper {
+        transform: translateZ(0); /* Аппаратное ускорение */
+        backface-visibility: hidden;
+        perspective: 1000;
+        /* Дополнительные оптимизации для четкости на мобильных устройствах */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "liga" 1;
+      }
+    }
+    
     #app {
       position: fixed;
       inset: 0;
@@ -73,13 +181,6 @@
     }
     #app.green-flicker {
       animation: flickerAnimation 1000ms ease-in-out;
-    }
-    .symbolWrapper {
-      position: absolute;
-      will-change: transform;
-      display: grid;
-      place-items: center;
-      pointer-events: none;
     }
     .symbolWrapper.hidden { display: none; }
     .symbolWrapper svg { shape-rendering: geometricPrecision; }
@@ -452,6 +553,7 @@
       display: grid;
       place-items: center;
       pointer-events: none;
+      overflow: hidden; /* Prevent scrolling */
     }
     .layer {
       position: absolute;
@@ -459,6 +561,7 @@
       height: 100%;
       transition: filter 2500ms ease-in-out, opacity 2500ms ease-in-out, transform 2500ms ease-in-out;
       will-change: filter, transform, opacity;
+      overflow: visible; /* Changed from hidden to visible to prevent clipping of emojis */
     }
     .layer .symbolWrapper { position: relative; left: 0; top: 0; }
     .layer.focus { filter: blur(0px); opacity: 1; }
@@ -685,7 +788,7 @@
   (function() {
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
-    const APP_VERSION = 'v1.3.0';
+    const APP_VERSION = 'v1.4.0';
     // *** КОНЕЦ КОНФИГУРАЦИИ ВЕРСИИ ***
     
     const app = document.getElementById('app');
@@ -2296,12 +2399,10 @@ phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'
         if (target === 'front') {
           frontFocusCount++;
           
-          // Если это третий (или более) фокус на переднем слое, меняем эмодзи
+          // Если это третий (или более) фокус на переднем слое, меняем один случайный эмодзи
           if (frontFocusCount >= 3) {
-            // Используем плавный переход при изменении эмодзи
-            changeEmojiWithFade('back', getRandomEmoji());
-            changeEmojiWithFade('mid', getRandomEmoji());
-            changeEmojiWithFade('front', getRandomEmoji());
+            // Используем плавный переход при изменении одного случайного эмодзи
+            changeRandomEmojiWithFade();
             
             // Сбрасываем счетчик
             frontFocusCount = 0;
@@ -2373,6 +2474,222 @@ phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'
       phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
     }
     
+    function renderWordsMode(durationMs) {
+      clearAllTimersAndLoops();
+      phaseEndAt = performance.now() + durationMs + 2000 + 2000;
+      clearSymbol(); updateHUD(); setTheme(pick(0.5)); startTicking();
+
+      showCycleInfo('words');
+      animationRunning = false; // Disable animation
+      pauseButton.style.display = 'grid';
+      // Запускаем таймер обратного отсчета режима
+      startModeCountdownTimer(durationMs);
+
+      const layersRoot = document.getElementById('layers');
+      const back = document.getElementById('layerBack');
+      const mid = document.getElementById('layerMid');
+      const front = document.getElementById('layerFront');
+      [back, mid, front].forEach(el => { if (el) { el.innerHTML=''; el.classList.remove('focus','unfocus'); } });
+      if (layersRoot) {
+        layersRoot.style.opacity = '0';
+        layersRoot.style.transition = 'opacity 800ms ease';
+      }
+      requestAnimationFrame(() => { if (layersRoot) layersRoot.style.opacity = '1'; });
+      
+      const vw = Math.max(window.innerWidth, 320);
+      const vh = Math.max(window.innerHeight, 320);
+      
+      // Remove canvas elements as we'll use text instead
+      [back, mid, front].forEach(el => {
+        if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
+      });
+      
+      const nWords = 3; 
+      const allWords = [];
+      for (let i = 0; i < nWords; i++) {
+        const word = mixedLangWord();
+        let fontSize;
+        if (i === nWords - 1) {
+            fontSize = rand(14, 22);
+        } else {
+            fontSize = rand(48, 120);
+        }
+        
+        // Position words in the center without movement
+        const y = vh / 2;
+        const x = vw / 2; // Fixed position in center
+
+        const duration = durationMs;
+        const layer = ['back', 'mid', 'front'][i];
+        allWords.push({word, fontSize, y, x, duration, t0: performance.now(), layer});
+      }
+      
+      const wordsByLayer = {back: [], mid: [], front: []};
+      allWords.forEach(w => wordsByLayer[w.layer].push(w));
+      
+      const isDark = document.documentElement.classList.contains('dark');
+      const wordColor = isDark ? '#fff' : '#000';
+      
+      // Store layers reference
+      const layers = { back, mid, front };
+      
+      // Function to create text-based word elements
+      function createWordElement(layer, word, fontSize, x, y) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'symbolWrapper';
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = `${x}px`;
+        wrapper.style.top = `${y}px`;
+        wrapper.style.transform = 'translate(-50%, -50%)'; // Center the word
+        wrapper.style.fontSize = `${Math.floor(fontSize)}px`;
+        wrapper.style.fontFamily = 'system-ui, Arial, sans-serif';
+        wrapper.style.fontWeight = 'bold';
+        wrapper.style.pointerEvents = 'none';
+        wrapper.style.userSelect = 'none';
+        wrapper.style.willChange = 'auto'; // Disable will-change to prevent blurry rendering
+        wrapper.style.textAlign = 'center';
+        wrapper.style.lineHeight = '1';
+        wrapper.style.color = wordColor;
+        wrapper.style.imageRendering = '-webkit-optimize-contrast';
+        wrapper.style.imageRendering = 'crisp-edges';
+        wrapper.style.webkitFontSmoothing = 'antialiased';
+        wrapper.style.mozOsxFontSmoothing = 'grayscale';
+        wrapper.style.textRendering = 'optimizeSpeed';
+        wrapper.style.transformStyle = 'preserve-3d';
+        wrapper.style.backfaceVisibility = 'hidden';
+        wrapper.style.whiteSpace = 'nowrap'; // Prevent word wrapping
+        wrapper.style.overflow = 'hidden'; // Clip words that don't fit
+        wrapper.style.textOverflow = 'clip'; // Clip overflow without ellipsis
+        wrapper.style.maxWidth = '100vw'; // Ensure words don't exceed viewport width
+        wrapper.style.maxHeight = '100vh'; // Ensure words don't exceed viewport height
+        wrapper.textContent = word;
+        return wrapper;
+      }
+      
+      // Function to draw/update words as text elements
+      function drawWords(layer, words, now) {
+        // Clear existing words for this layer
+        const layerElement = layers[layer];
+        if (layerElement) {
+          // Remove existing word elements for this layer
+          const existingWords = layerElement.querySelectorAll('.symbolWrapper');
+          existingWords.forEach(el => el.remove());
+          
+          // Create and add new word elements
+          words.forEach(w => {
+            // No movement - use fixed position
+            const wordElement = createWordElement(layer, w.word, w.fontSize, w.x, w.y);
+            layerElement.appendChild(wordElement);
+          });
+        }
+      }
+      
+      // Initial word creation
+      const startTime = performance.now();
+      Object.keys(wordsByLayer).forEach(layer => {
+        drawWords(layer, wordsByLayer[layer], startTime);
+      });
+      
+      // Счетчик фокусов на переднем слое
+      let frontFocusCount = 0;
+      
+      function setFocus(target) {
+        playFocusSwitch(target);
+        const map = { back, mid, front };
+        Object.entries(map).forEach(([key, el]) => {
+          if (!el) return;
+          el.classList.toggle('focus', key === target);
+          el.classList.toggle('unfocus', key !== target);
+        });
+        const center = document.getElementById('center');
+        if (center) {
+          center.classList.toggle('focusViz', target === 'mid');
+          center.classList.toggle('unfocusViz', target !== 'mid');
+        }
+        
+        // Обработка фокуса на переднем слое
+        if (target === 'front') {
+          frontFocusCount++;
+          
+          // Если это третий (или более) фокус на переднем слое, меняем слова
+          if (frontFocusCount >= 3) {
+            // Generate new words
+            const newWords = [];
+            for (let i = 0; i < nWords; i++) {
+              const word = mixedLangWord();
+              let fontSize;
+              if (i === nWords - 1) {
+                  fontSize = rand(14, 22);
+              } else {
+                  fontSize = rand(48, 120);
+              }
+              
+              // Position words in the center without movement
+              const y = vh / 2;
+              const x = vw / 2; // Fixed position in center
+
+              const duration = durationMs;
+              const layer = ['back', 'mid', 'front'][i];
+              newWords.push({word, fontSize, y, x, duration, t0: performance.now(), layer});
+            }
+            
+            // Update words by layer
+            const newWordsByLayer = {back: [], mid: [], front: []};
+            newWords.forEach(w => newWordsByLayer[w.layer].push(w));
+            
+            // Update words for each layer
+            Object.keys(newWordsByLayer).forEach(layer => {
+              wordsByLayer[layer] = newWordsByLayer[layer];
+            });
+            
+            // Redraw words
+            const now = performance.now();
+            Object.keys(wordsByLayer).forEach(layer => {
+              drawWords(layer, wordsByLayer[layer], now);
+            });
+            
+            // Сбрасываем счетчик
+            frontFocusCount = 0;
+          }
+        }
+      }
+      setFocus('mid');
+      
+      const focusNames = ['mid', 'back', 'front'];
+      const nSwitches = Math.max(1, Math.floor(durationMs / 3000));
+      let lastFocus = 'mid';
+      const switchTimers = [];
+      for (let i = 0; i < nSwitches; i++) {
+        let next;
+        do {
+          next = focusNames[randInt(0, 3)];
+        } while (next === lastFocus);
+        const at = Math.floor((i + 1) * durationMs / (nSwitches + 1));
+        switchTimers.push(setTimeout(() => setFocus(next), at));
+        lastFocus = next;
+      }
+      window._focusTimers.push(...switchTimers);
+      
+      // No animation loop needed since words don't move
+      // Just draw once and leave static
+      
+      const center = document.getElementById('center');
+      if (center) {
+        center.classList.remove('unfocusViz');
+        center.classList.add('focusViz');
+        center.innerHTML = ``;
+      }
+      
+      const shutters = document.getElementById('shutters');
+      const freezeLead = 2000;
+      freezeTimer = setTimeout(() => { 
+          animationRunning = false;
+          stopTicking();
+      }, Math.max(0, durationMs));
+      shutterTimer = setTimeout(() => { if (shutters) shutters.classList.add('active'); }, Math.max(0, durationMs + freezeLead));
+      phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'); startPause(); }, Math.max(0, durationMs + freezeLead + 2000));
+    }
+    
     function renderEmojiMode(durationMs) {
       clearAllTimersAndLoops();
       phaseEndAt = performance.now() + durationMs + 2000 + 2000;
@@ -2397,6 +2714,7 @@ phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'
       const vw = Math.max(window.innerWidth, 320);
       const vh = Math.max(window.innerHeight, 320);
       
+      // Remove canvas elements as we'll use text instead
       [back, mid, front].forEach(el => {
         if (el) { Array.from(el.querySelectorAll('canvas')).forEach(c => c.remove()); }
       });
@@ -2414,237 +2732,267 @@ phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'
         ['🕯️', '💡', '🔮', '🪞', '🎨', '🧩', '🎵', '🎶', '🎼', '📚', '🪄', '😺']
       ];
       
+      // SVG-версии эмодзи 
+      const emojiSVGs = {
+        // Цветы
+        '🌸': `<svg viewBox="0 0 100 100"><path fill="#FF69B4" d="M50,15c-5,0-10,3-12,8c-5-2-11,0-14,4c-3,4-3,10,0,14c3,4,9,5,14,2c2,5,7,8,12,8s10-3,12-8c5,3,11,2,14-2c3-4,3-10,0-14c-3-4-9-6-14-4C60,18,55,15,50,15z"/><circle cx="50" cy="40" r="10" fill="#FFF"/></svg>`,
+        '🌺': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="25" fill="#FF69B4"/><path fill="#FFF" d="M50,20c-3,0-5,2-5,5v10c0,3,2,5,5,5s5-2,5-5V25C55,22,53,20,50,20z"/><path fill="#FFF" d="M50,70c-3,0-5,2-5,5v10c0,3,2,5,5,5s5-2,5-5V75C55,72,53,70,50,70z"/><path fill="#FFF" d="M20,50c0-3,2-5,5-5h10c3,0,5,2,5,5s-2,5-5,5H25C22,55,20,53,20,50z"/><path fill="#FFF" d="M70,50c0-3,2-5,5-5h10c3,0,5,2,5,5s-2,5-5,5H75C72,55,70,53,70,50z"/><path fill="#FFF" d="M30,30c-2-2-2-5,0-7s5-2,7,0l7,7c2,2,2,5,0,7s-5,2-7,0L30,30z"/><path fill="#FFF" d="M70,30c2-2,2-5,0-7s-5-2-7,0l-7,7c-2,2-2,5,0,7s-5,2-7,0L70,30z"/><path fill="#FFF" d="M30,70c-2,2-2,5,0,7s-5,2,7,0l7-7c2-2,2-5,0-7s-5-2-7,0L30,70z"/><path fill="#FFF" d="M70,70c2,2,2,5,0,7s-5,2-7,0l-7-7c-2-2-2-5,0-7s-5-2,7,0L70,70z"/></svg>`,
+        '🌼': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="20" fill="#FFD700"/><path fill="#000" d="M50,20c-3,0-5,2-5,5v10c0,3,2,5,5,5s5-2,5-5V25C55,22,53,20,50,20z"/><path fill="#000" d="M50,70c-3,0-5,2-5,5v10c0,3,2,5,5,5s5-2,5-5V75C55,72,53,70,50,70z"/><path fill="#000" d="M20,50c0-3,2-5,5-5h10c3,0,5,2,5,5s-2,5-5,5H25C22,55,20,53,20,50z"/><path fill="#000" d="M70,50c0-3,2-5,5-5h10c3,0,5,2,5,5s-2,5-5,5H75C72,55,70,53,70,50z"/><path fill="#000" d="M30,30c-2-2-2-5,0-7s5-2,7,0l7,7c2,2,2,5,0,7s-5,2-7,0L30,30z"/><path fill="#000" d="M70,30c2-2,2-5,0-7s-5-2-7,0l-7,7c-2,2-2,5,0,7s-5,2-7,0L70,30z"/><path fill="#000" d="M30,70c-2,2-2,5,0,7s-5,2,7,0l7-7c2-2,2-5,0-7s-5-2-7,0L30,70z"/><path fill="#000" d="M70,70c2,2,2,5,0,7s-5,2-7,0l-7-7c-2-2-2-5,0-7s-5-2,7,0L70,70z"/><circle cx="50" cy="50" r="10" fill="#000"/></svg>`,
+        '🌻': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#FFD700"/><path fill="#000" d="M50,25c-3,0-5,2-5,5v10c0,3,2,5,5,5s5-2,5-5V30C55,27,53,25,50,25z"/><path fill="#000" d="M50,65c-3,0-5,2-5,5v10c0,3,2,5,5,5s5-2,5-5V70C55,67,53,65,50,65z"/><path fill="#000" d="M25,50c0-3,2-5,5-5h10c3,0,5,2,5,5s-2,5-5,5H30C27,55,25,53,25,50z"/><path fill="#000" d="M65,50c0-3,2-5,5-5h10c3,0,5,2,5,5s-2,5-5,5H70C67,55,65,53,65,50z"/><path fill="#000" d="M32,32c-2-2-2-5,0-7s5-2,7,0l7,7c2,2,2,5,0,7s-5,2-7,0L32,32z"/><path fill="#000" d="M68,32c2-2,2-5,0-7s-5-2-7,0l-7,7c-2,2-2,5,0,7s-5,2-7,0L68,32z"/><path fill="#000" d="M32,68c-2,2-2,5,0,7s-5,2,7,0l7-7c2-2,2-5,0-7s-5-2-7,0L32,68z"/><path fill="#000" d="M68,68c2,2,2,5,0,7s-5,2-7,0l-7-7c-2-2-2-5,0-7s-5-2,7,0L68,68z"/><circle cx="50" cy="50" r="15" fill="#000"/></svg>`,
+        '🌷': `<svg viewBox="0 0 100 100"><path fill="#FF69B4" d="M50,20c-10,0-20,10-20,20c0,10,5,15,10,20c-5,5-10,10-10,15c0,10,10,15,20,15s20-5,20-15c0-5-5-10-10-15c5-5,10-10,10-20C70,30,60,20,50,20z"/><path fill="#000" d="M40,30c0-5,5-10,10-10s10,5,10,10c0,5-5,10-10,10S40,35,40,30z"/></svg>`,
+        '🌹': `<svg viewBox="0 0 100 100"><path fill="#FF69B4" d="M50,20c-10,0-20,10-20,20c0,10,5,15,10,20c-5,5-10,10-10,15c0,10,10,15,20,15s20-5,20-15c0-5-5-10-10-15c5-5,10-10,10-20C70,30,60,20,50,20z"/><path fill="#000" d="M40,30c0-5,5-10,10-10s10,5,10,10c0,5-5,10-10,10S40,35,40,30z"/><path fill="#000" d="M30,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S35,40,30,40z"/><path fill="#000" d="M70,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S75,40,70,40z"/></svg>`,
+        '🥀': `<svg viewBox="0 0 100 100"><path fill="#8B4513" d="M50,80c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S55,80,50,80z"/><path fill="#8B4513" d="M30,60c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S35,60,30,60z"/><path fill="#8B4513" d="M70,60c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S75,60,70,60z"/><path fill="#8B4513" d="M50,40c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S55,40,50,40z"/><path fill="#8B4513" d="M40,50c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S45,50,40,50z"/><path fill="#8B4513" d="M60,50c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S65,50,60,50z"/><path fill="#8B4513" d="M50,20L45,30L55,30L50,20z"/></svg>`,
+        '💐': `<svg viewBox="0 0 100 100"><path fill="#228B22" d="M50,70c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S55,70,50,70z"/><path fill="#FF69B4" d="M30,50c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S35,50,30,50z"/><path fill="#FFD700" d="M70,50c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S75,50,70,50z"/><path fill="#90EE90" d="M50,30c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S55,30,50,30z"/><path fill="#8B4513" d="M50,80L45,90L55,90L50,80z"/></svg>`,
+        '🌱': `<svg viewBox="0 0 100 100"><path fill="#228B22" d="M50,80c-10,0-20-10-20-20c0-10,5-15,10-20c-5-5-10-10-10-15c0-10,10-15,20-15s20,5,20,15c0,5-5,10-10,15c5,5,10,10,10,20C70,70,60,80,50,80z"/></svg>`,
+        '🌿': `<svg viewBox="0 0 100 100"><path fill="#228B22" d="M30,70c-10,0-20-10-20-20c0-10,5-15,10-20c-5-5-10-10-10-15c0-10,10-15,20-15s20,5,20,15c0,5-5,10-10,15c5,5,10,10,10,20C50,60,40,70,30,70z"/><path fill="#228B22" d="M70,70c-10,0-20-10-20-20c0-10,5-15,10-20c-5-5-10-10-10-15c0-10,10-15,20-15s20,5,20,15c0,5-5,10-10,15c5,5,10,10,10,20C90,60,80,70,70,70z"/></svg>`,
+        '☘️': `<svg viewBox="0 0 100 100"><path fill="#228B22" d="M50,20c-10,0-20,10-20,20c0,10,5,15,10,20c-5,5-10,10-10,15c0,10,10,15,20,15s20-5,20-15c0-5-5-10-10-15c5-5,10-10,10-20C70,30,60,20,50,20z"/><circle cx="50" cy="40" r="10" fill="#228B22"/></svg>`,
+        '🍀': `<svg viewBox="0 0 100 100"><circle cx="30" cy="30" r="15" fill="#228B22"/><circle cx="70" cy="30" r="15" fill="#228B22"/><circle cx="30" cy="70" r="15" fill="#228B22"/><circle cx="70" cy="70" r="15" fill="#228B22"/><path fill="#228B22" d="M50,40c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S55,40,50,40z"/></svg>`,
+        
+        // Растения
+        '🌵': `<svg viewBox="0 0 100 100"><path fill="#228B22" d="M50,20c-15,0-30,10-30,25c0,15,10,25,25,25c0,10-5,15-10,20c5,5,10,5,15,0c5,5,10,5,15,0c-5-5-10-10-10-20c15,0,25-10,25-25C80,30,65,20,50,20z"/><path fill="#228B22" d="M40,30c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C45,32,42,30,40,30z"/><path fill="#228B22" d="M60,30c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C65,32,62,30,60,30z"/></svg>`,
+        '🌴': `<svg viewBox="0 0 100 100"><path fill="#8B4513" d="M50,80c-2,0-5-2-5-5V30c0-3,2-5,5-5s5,2,5,5v45C55,78,52,80,50,80z"/><path fill="#228B22" d="M50,20c-20,0-40,10-40,30c0,20,20,30,40,30s40-10,40-30C90,30,70,20,50,20z"/></svg>`,
+        '🌳': `<svg viewBox="0 0 100 100"><path fill="#8B4513" d="M45,80c-2,0-5-2-5-5V40c0-3,2-5,5-5h10c3,0,5,2,5,5v35c0,3-2,5-5,5H45z"/><path fill="#228B22" d="M50,20c-20,0-40,15-40,35c0,20,20,35,40,35s40-15,40-35C90,35,70,20,50,20z"/></svg>`,
+        '🌲': `<svg viewBox="0 0 100 100"><path fill="#8B4513" d="M45,80c-2,0-5-2-5-5V50c0-3,2-5,5-5h10c3,0,5,2,5,5v25c0,3-2,5-5,5H45z"/><path fill="#228B22" d="M50,20L20,50h15v10h10v10h10V60h10V50h15L50,20z"/></svg>`,
+        '🌾': `<svg viewBox="0 0 100 100"><path fill="#FFD700" d="M50,80c-2,0-5-2-5-5V30c0-3,2-5,5-5s5,2,5,5v45C55,78,52,80,50,80z"/><path fill="#228B22" d="M50,20c-10,0-20,5-20,15c0,10,10,15,20,15s20-5,20-15C70,25,60,20,50,20z"/></svg>`,
+        '🍁': `<svg viewBox="0 0 100 100"><path fill="#FF4500" d="M50,20c-15,0-30,10-30,25c0,15,10,25,25,25c0,10-5,15-10,20c5,5,10,5,15,0c5,5,10,5,15,0c-5-5-10-10-10-20c15,0,25-10,25-25C80,30,65,20,50,20z"/><path fill="#8B4513" d="M50,70c-2,0-5-2-5-5V40c0-3,2-5,5-5s5,2,5,5v25C55,68,52,70,50,70z"/></svg>`,
+        '🍂': `<svg viewBox="0 0 100 100"><path fill="#FF4500" d="M50,20c-15,0-30,10-30,25c0,15,10,25,25,25c0,10-5,15-10,20c5,5,10,5,15,0c5,5,10,5,15,0c-5-5-10-10-10-20c15,0,25-10,25-25C80,30,65,20,50,20z"/></svg>`,
+        '🍃': `<svg viewBox="0 0 100 100"><path fill="#228B22" d="M50,20c-15,0-30,10-30,25c0,15,10,25,25,25c0,10-5,15-10,20c5,5,10,5,15,0c5,5,10,5,15,0c-5-5-10-10-10-20c15,0,25-10,25-25C80,30,65,20,50,20z"/><path fill="#8B4513" d="M50,60c-2,0-5-2-5-5V40c0-3,2-5,5-5s5,2,5,5v15C55,58,52,60,50,60z"/></svg>`,
+        '🍄': `<svg viewBox="0 0 100 100"><path fill="#8B4513" d="M50,70c-5,0-10-5-10-10s5-10,10-10s10,5,10,10S55,70,50,70z"/><path fill="#FF69B4" d="M50,30c-15,0-30,10-30,25c0,15,15,25,30,25s30-10,30-25C80,40,65,30,50,30z"/><path fill="#8B4513" d="M45,40c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C50,42,47,40,45,40z"/><path fill="#8B4513" d="M55,40c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C60,42,57,40,55,40z"/></svg>`,
+        '🌰': `<svg viewBox="0 0 100 100"><path fill="#8B4513" d="M50,30c-15,0-30,10-30,25c0,15,15,25,30,25s30-10,30-25C80,40,65,30,50,30z"/><path fill="#D2691E" d="M40,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S45,40,40,40z"/><path fill="#D2691E" d="M60,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S65,40,60,40z"/></svg>`,
+        '🌍': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#1E90FF"/><path fill="#228B22" d="M30,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S35,40,30,40z"/><path fill="#228B22" d="M70,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S75,40,70,40z"/><path fill="#228B22" d="M50,30c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S55,30,50,30z"/></svg>`,
+        '🌎': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#1E90FF"/><path fill="#228B22" d="M30,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S35,40,30,40z"/><path fill="#228B22" d="M70,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S75,40,70,40z"/><path fill="#228B22" d="M50,30c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S55,30,50,30z"/><path fill="#228B22" d="M40,50c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S45,50,40,50z"/><path fill="#228B22" d="M60,50c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S65,50,60,50z"/></svg>`,
+        '🌏': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#1E90FF"/><path fill="#228B22" d="M30,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S35,40,30,40z"/><path fill="#228B22" d="M70,40c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S75,40,70,40z"/><path fill="#228B22" d="M50,30c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S55,30,50,30z"/><path fill="#228B22" d="M40,50c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S45,50,40,50z"/><path fill="#228B22" d="M60,50c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S65,50,60,50z"/><path fill="#228B22" d="M50,60c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S55,60,50,60z"/></svg>`,
+        
+        // Луна
+        '🌑': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#000"/></svg>`,
+        '🌒': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#000"/><path fill="#FFF" d="M50,10c22,0,40,18,40,40c0,22-18,40-40,40C28,90,10,72,10,50C10,28,28,10,50,10z"/></svg>`,
+        '🌓': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#000"/><path fill="#FFF" d="M50,10v80C28,90,10,72,10,50C10,28,28,10,50,10z"/></svg>`,
+        '🌔': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#000"/><path fill="#FFF" d="M50,10v80c22,0,40-18,40-40S72,10,50,10z"/></svg>`,
+        '🌕': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#DDD"/></svg>`,
+        '🌖': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#DDD"/><path fill="#000" d="M50,10v80c22,0,40-18,40-40S72,10,50,10z"/></svg>`,
+        '🌗': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#DDD"/><path fill="#000" d="M50,10v80C28,90,10,72,10,50C10,28,28,10,50,10z"/></svg>`,
+        '🌘': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#DDD"/><path fill="#000" d="M50,10c-22,0-40,18-40,40c0,22,18,40,40,40C72,90,90,72,90,50C90,28,72,10,50,10z"/></svg>`,
+        '🌙': `<svg viewBox="0 0 100 100"><path fill="#DDD" d="M50,10c22,0,40,18,40,40c0,22-18,40-40,40C28,90,10,72,10,50C10,28,28,10,50,10z"/><path fill="#000" d="M50,10c-22,0-40,18-40,40c0,22,18,40,40,40C72,90,90,72,90,50C90,28,72,10,50,10z"/></svg>`,
+        '🌚': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#000"/><circle cx="35" cy="40" r="5" fill="#FFF"/><circle cx="65" cy="40" r="5" fill="#FFF"/><path fill="#FFF" d="M40,60Q50,70,60,60"/></svg>`,
+        '🌝': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#DDD"/><circle cx="35" cy="40" r="5" fill="#000"/><circle cx="65" cy="40" r="5" fill="#000"/><path fill="#000" d="M40,60Q50,70,60,60"/></svg>`,
+        
+        // Солнце и звезды
+        '🌞': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#FFD700"/><path fill="#FFD700" d="M50,10L55,25L70,30L55,35L50,50L45,35L30,30L45,25L50,10z"/><circle cx="40" cy="40" r="3" fill="#FFF"/><circle cx="60" cy="40" r="3" fill="#FFF"/><path fill="#FFF" d="M45,55Q50,60,55,55"/></svg>`,
+        '⭐': `<svg viewBox="0 0 100 100"><path fill="#FFD700" d="M50,10l12,30h32l-26,18l10,32l-28-20l-28,20l10-32l-26-18h32L50,10z"/></svg>`,
+        '🌟': `<svg viewBox="0 0 100 100"><path fill="#FFD700" d="M50,10l12,30h32l-26,18l10,32l-28-20l-28,20l10-32l-26-18h32L50,10z"/><circle cx="30" cy="25" r="5" fill="#FFF"/><circle cx="70" cy="20" r="3" fill="#FFF"/><circle cx="25" cy="60" r="4" fill="#FFF"/><circle cx="75" cy="65" r="3" fill="#FFF"/></svg>`,
+        '✨': `<svg viewBox="0 0 100 100"><circle cx="30" cy="30" r="5" fill="#FFD700"/><circle cx="70" cy="30" r="3" fill="#FFD700"/><circle cx="50" cy="50" r="4" fill="#FFD700"/><circle cx="30" cy="70" r="3" fill="#FFD700"/><circle cx="70" cy="70" r="5" fill="#FFD700"/></svg>`,
+        
+        // Природа
+        '⚡': `<svg viewBox="0 0 100 100"><path fill="#FFD700" d="M50,10L30,50L45,50L35,90L70,50L55,50L50,10z"/></svg>`,
+        '🔥': `<svg viewBox="0 0 100 100"><path fill="#FF4500" d="M50,20c-10,0-20,10-20,20c0,10,5,15,10,20c-5,5-10,10-10,15c0,10,10,15,20,15s20-5,20-15c0-5-5-10-10-15c5-5,10-10,10-20C70,30,60,20,50,20z"/><path fill="#FFA500" d="M50,30c-5,0-10,5-10,10c0,5,3,8,5,10c-3,3-5,6-5,10c0,5,5,8,10,8s10-3,10-8c0-4-2-7-5-10c2-2,5-5,5-10C60,35,55,30,50,30z"/></svg>`,
+        '💧': `<svg viewBox="0 0 100 100"><path fill="#1E90FF" d="M50,20c-15,0-30,15-30,30c0,15,15,30,30,30s30-15,30-30C80,35,65,20,50,20z"/></svg>`,
+        '🌊': `<svg viewBox="0 0 100 100"><path fill="#1E90FF" d="M10,50Q30,30,50,50T90,50v20H10V50z"/></svg>`,
+        '☂️': `<svg viewBox="0 0 100 100"><path fill="#000" d="M50,20c-15,0-30,10-30,25c0,15,15,25,30,25s30-10,30-25C80,30,65,20,50,20z"/><path fill="#000" d="M50,70c-2,0-5,2-5,5v10c0,3,2,5,5,5s5-2,5-5V75C55,72,52,70,50,70z"/></svg>`,
+        '🌈': `<svg viewBox="0 0 100 100"><path fill="#FF0000" d="M10,50Q30,30,50,50T90,50" stroke="#FF0000" stroke-width="3" fill="none"/><path fill="#FFA500" d="M10,55Q30,35,50,55T90,55" stroke="#FFA500" stroke-width="3" fill="none"/><path fill="#FFFF00" d="M10,60Q30,40,50,60T90,60" stroke="#FFFF00" stroke-width="3" fill="none"/><path fill="#00FF00" d="M10,65Q30,45,50,65T90,65" stroke="#00FF00" stroke-width="3" fill="none"/><path fill="#0000FF" d="M10,70Q30,50,50,70T90,70" stroke="#0000FF" stroke-width="3" fill="none"/><path fill="#4B0082" d="M10,75Q30,55,50,75T90,75" stroke="#4B0082" stroke-width="3" fill="none"/><path fill="#8B00FF" d="M10,80Q30,60,50,80T90,80" stroke="#8B00FF" stroke-width="3" fill="none"/></svg>`,
+        '❄️': `<svg viewBox="0 0 100 100"><path fill="#DDD" d="M50,20L55,35L70,40L55,45L50,60L45,45L30,40L45,35L50,20z"/><path fill="#DDD" d="M50,70L52,75L55,76L52,77L50,82L48,77L45,76L48,75L50,70z"/></svg>`,
+        '☃️': `<svg viewBox="0 0 100 100"><circle cx="50" cy="40" r="20" fill="#DDD"/><path fill="#DDD" d="M50,60c-10,0-20,10-20,20c0,10,10,20,20,20s20-10,20-20C70,70,60,60,50,60z"/><path fill="#000" d="M45,35c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C50,37,47,35,45,35z"/><path fill="#000" d="M55,35c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C60,37,57,35,55,35z"/><path fill="#000" d="M50,45c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C55,47,52,45,50,45z"/></svg>`,
+        
+        // Еда
+        '🍇': `<svg viewBox="0 0 100 100"><circle cx="40" cy="40" r="10" fill="#9370DB"/><circle cx="60" cy="40" r="10" fill="#9370DB"/><circle cx="50" cy="55" r="10" fill="#9370DB"/><circle cx="35" cy="60" r="8" fill="#9370DB"/><circle cx="65" cy="60" r="8" fill="#9370DB"/></svg>`,
+        '🍒': `<svg viewBox="0 0 100 100"><circle cx="40" cy="50" r="12" fill="#DC143C"/><circle cx="60" cy="50" r="12" fill="#DC143C"/><path fill="#8B4513" d="M50,30c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C55,32,52,30,50,30z"/></svg>`,
+        '🍓': `<svg viewBox="0 0 100 100"><path fill="#DC143C" d="M50,20c-15,0-30,10-30,25c0,15,15,25,30,25s30-10,30-25C80,30,65,20,50,20z"/><path fill="#000" d="M40,30c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C45,32,42,30,40,30z"/><path fill="#000" d="M60,30c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C65,32,62,30,60,30z"/><path fill="#000" d="M50,40c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C55,42,52,40,50,40z"/><path fill="#000" d="M45,50c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C50,52,47,50,45,50z"/><path fill="#000" d="M55,50c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C60,52,57,50,55,50z"/></svg>`,
+        '🍉': `<svg viewBox="0 0 100 100"><path fill="#228B22" d="M50,20c-20,0-40,15-40,35c0,20,20,35,40,35s40-15,40-35C90,35,70,20,50,20z"/><path fill="#FF6347" d="M50,30c-15,0-30,10-30,25c0,15,15,25,30,25s30-10,30-25C80,40,65,30,50,30z"/><circle cx="40" cy="45" r="3" fill="#000"/><circle cx="50" cy="50" r="3" fill="#000"/><circle cx="60" cy="45" r="3" fill="#000"/><circle cx="45" cy="55" r="3" fill="#000"/><circle cx="55" cy="55" r="3" fill="#000"/></svg>`,
+        '🍊': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#FFA500"/><path fill="#000" d="M40,35c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C45,37,42,35,40,35z"/><path fill="#000" d="M60,35c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C65,37,62,35,60,35z"/><path fill="#000" d="M50,45c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C55,47,52,45,50,45z"/><path fill="#000" d="M45,55c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C50,57,47,55,45,55z"/><path fill="#000" d="M55,55c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C60,57,57,55,55,55z"/></svg>`,
+        '🍋': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#FFD700"/><path fill="#000" d="M40,35c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C45,37,42,35,40,35z"/><path fill="#000" d="M60,35c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C65,37,62,35,60,35z"/><path fill="#000" d="M50,45c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C55,47,52,45,50,45z"/><path fill="#000" d="M45,55c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C50,57,47,55,45,55z"/><path fill="#000" d="M55,55c-2,0-5,2-5,5v2c0,3,2,5,5,5s5-2,5-5v-2C60,57,57,55,55,55z"/></svg>`,
+        '🍎': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#DC143C"/><path fill="#8B4513" d="M50,25c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C55,27,52,25,50,25z"/><circle cx="45" cy="45" r="3" fill="#000"/><circle cx="55" cy="45" r="3" fill="#000"/><path fill="#000" d="M50,55c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S55,55,50,55z"/></svg>`,
+        '🍏': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#228B22"/><path fill="#8B4513" d="M50,25c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C55,27,52,25,50,25z"/><circle cx="45" cy="45" r="3" fill="#000"/><circle cx="55" cy="45" r="3" fill="#000"/><path fill="#000" d="M50,55c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S55,55,50,55z"/></svg>`,
+        '🍑': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#FF69B4"/><path fill="#8B4513" d="M50,25c-2,0-5,2-5,5v5c0,3,2,5,5,5s5-2,5-5v-5C55,27,52,25,50,25z"/><circle cx="45" cy="45" r="3" fill="#000"/><circle cx="55" cy="45" r="3" fill="#000"/><path fill="#000" d="M50,55c-5,0-10,5-10,10s5,10,10,10s10-5,10-10S55,55,50,55z"/></svg>`,
+        
+        // Напитки
+        '🍵': `<svg viewBox="0 0 100 100"><path fill="#D2691E" d="M30,70c-5,0-10-5-10-10V40c0-5,5-10,10-10h40c5,0,10,5,10,10v20c0,5-5,10-10,10H30z"/><path fill="#8B4513" d="M70,30c5,0,10,5,10,10v5c0,5-5,10-10,10H30c-5,0-10-5-10-10v-5c0-5,5-10,10-10H70z"/><path fill="#FFF" d="M50,20c-10,0-20,5-20,15c0,10,10,15,20,15s20-5,20-15C70,25,60,20,50,20z"/></svg>`,
+        '🍶': `<svg viewBox="0 0 100 100"><path fill="#FFF" d="M30,70c-5,0-10-5-10-10V40c0-5,5-10,10-10h40c5,0,10,5,10,10v20c0,5-5,10-10,10H30z"/><path fill="#8B4513" d="M50,20c-10,0-20,5-20,15c0,10,10,15,20,15s20-5,20-15C70,25,60,20,50,20z"/><path fill="#8B4513" d="M50,50c-5,0-10,5-10,10v5c0,5,5,10,10,10s10-5,10-10v-5C60,55,55,50,50,50z"/></svg>`,
+        '🍺': `<svg viewBox="0 0 100 100"><path fill="#FFD700" d="M30,70c-5,0-10-5-10-10V30c0-5,5-10,10-10h40c5,0,10,5,10,10v30c0,5-5,10-10,10H30z"/><path fill="#8B4513" d="M30,20c-5,0-10,5-10,10v5c0,5,5,10,10,10h40c5,0,10-5,10-10v-5c0-5-5-10-10-10H30z"/><path fill="#FFF" d="M50,30c-10,0-20,5-20,15c0,10,10,15,20,15s20-5,20-15C70,35,60,30,50,30z"/></svg>`,
+        '🍷': `<svg viewBox="0 0 100 100"><path fill="#8B0000" d="M30,70c-5,0-10-5-10-10V40c0-5,5-10,10-10h40c5,0,10,5,10,10v20c0,5-5,10-10,10H30z"/><path fill="#8B4513" d="M50,20c-10,0-20,5-20,15c0,10,10,15,20,15s20-5,20-15C70,25,60,20,50,20z"/><path fill="#8B4513" d="M50,50c-5,0-10,5-10,10v5c0,5,5,10,10,10s10-5,10-10v-5C60,55,55,50,50,50z"/></svg>`,
+        '🥂': `<svg viewBox="0 0 100 100"><path fill="none" stroke="#DDD" stroke-width="3" d="M30,70c-5,0-10-5-10-10V40c0-5,5-10,10-10h10l10-20M70,70c5,0,10-5,10-10V40c0-5-5-10-10-10h-10l-10-20"/><path fill="#FFD700" d="M50,50L40,60L60,60L50,50z"/></svg>`,
+        '🍸': `<svg viewBox="0 0 100 100"><path fill="#1E90FF" d="M30,70c-5,0-10-5-10-10V40c0-5,5-10,10-10h40c5,0,10,5,10,10v20c0,5-5,10-10,10H30z"/><path fill="#8B4513" d="M50,20c-10,0-20,5-20,15c0,10,10,15,20,15s20-5,20-15C70,25,60,20,50,20z"/><path fill="#8B4513" d="M50,50c-5,0-10,5-10,10v5c0,5,5,10,10,10s10-5,10-10v-5C60,55,55,50,50,50z"/></svg>`,
+        
+        // Другие
+        '❤️': `<svg viewBox="0 0 100 100"><path fill="#FF0000" d="M50,85c-5-5-15-15-15-25c0-10,10-20,20-20s20,10,20,20C85,70,75,80,50,85z"/></svg>`,
+        '😺': `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#FFA500"/><circle cx="35" cy="40" r="5" fill="#000"/><circle cx="65" cy="40" r="5" fill="#000"/><path fill="#000" d="M40,60Q50,70,60,60"/></svg>`
+      };
+      
+      // Фильтруем наборы эмодзи, оставляя только те, которые имеют SVG-версии
+      const filteredEmojiSets = emojiSets.map(set => 
+        set.filter(emoji => typeof emojiSVGs !== 'undefined' && emojiSVGs[emoji])
+      ).filter(set => set.length > 0); // Удаляем пустые наборы
+      
       function getRandomEmoji() {
-        const randomSet = emojiSets[Math.floor(Math.random() * emojiSets.length)];
+        // Используем только отфильтрованные наборы эмодзи
+        const randomSet = filteredEmojiSets[Math.floor(Math.random() * filteredEmojiSets.length)];
         return randomSet[Math.floor(Math.random() * randomSet.length)];
       }
       
-      function createLayerCanvas(parent) {
-        const dpr = window.devicePixelRatio || 1;
-        const superSampleFactor = dpr >= 3 ? 2 : (dpr >= 2 ? 1.5 : 1);
-        const effectiveDpr = dpr * superSampleFactor;
-        
-        const c = document.createElement('canvas');
-        c.width = vw * effectiveDpr;
-        c.height = vh * effectiveDpr;
-        c.style.position = 'absolute';
-        c.style.left = '0';
-        c.style.top = '0';
-        c.style.width = `${vw}px`;
-        c.style.height = `${vh}px`;
-        c.style.imageRendering = 'pixelated';
-        c.style.imageRendering = '-moz-crisp-edges';
-        c.style.imageRendering = 'crisp-edges';
-        c.style.imageRendering = '-webkit-optimize-contrast';
-        c.style.imageRendering = '-webkit-crisp-edges';
-        c.style.webkitFontSmoothing = 'none';
-        c.style.mozOsxFontSmoothing = 'unset';
-        c.style.fontSmooth = 'never';
-        c.style.textRendering = 'optimizeSpeed';
-        c.style.transformStyle = 'preserve-3d';
-        c.style.transform = 'translateZ(0)';
-        parent.appendChild(c);
-        
-        const ctx = c.getContext('2d', {
-          alpha: true,
-          desynchronized: true,
-          powerPreference: 'high-performance'
-        });
-        ctx.scale(effectiveDpr, effectiveDpr);
-        ctx.imageSmoothingEnabled = false;
-        if (ctx.textRenderingOptimization) {
-          ctx.textRenderingOptimization = 'optimizeSpeed';
-        }
-        if (ctx.imageSmoothingQuality !== undefined) {
-          ctx.imageSmoothingQuality = 'low';
-        }
-        return c;
-      }
-      const canvBack = createLayerCanvas(back);
-      const canvMid = createLayerCanvas(mid);
-      const canvFront = createLayerCanvas(front);
+      // Emoji sizes for each layer (2x larger)
       const emojiSizes = {
-        back: 18,   
-        mid: 27,    
-        front: 54   
+        back: 40,   
+        mid: 120,    
+        front: 200 
       };
       
+      // Store current emojis for each layer
       let allEmojis = {
         back: getRandomEmoji(),
         mid: getRandomEmoji(),
         front: getRandomEmoji()
       };
       
-      // Позиции эмодзи для каждого слоя (начинаем в центре)
-      let emojiPositions = {
-        back: { x: vw / 2, y: vh / 2 },
-        mid: { x: vw / 2, y: vh / 2 },
-        front: { x: vw / 2, y: vh / 2 }
+      // Fixed positions (no movement) - ensure perfect centering with integer values
+      const emojiPositions = {
+        back: { x: Math.round(vw / 2), y: Math.round(vh / 2) },
+        mid: { x: Math.round(vw / 2), y: Math.round(vh / 2) },
+        front: { x: Math.round(vw / 2), y: Math.round(vh / 2) }
       };
       
-      // Направление движения для плавной анимации
-      let movementDirection = {
-        dx: (Math.random() - 0.5) * 2, // От -1 до 1
-        dy: (Math.random() - 0.5) * 2  // От -1 до 1
-      };
-      
-      // Нормализуем вектор направления
-      const magnitude = Math.sqrt(movementDirection.dx * movementDirection.dx + movementDirection.dy * movementDirection.dy);
-      movementDirection.dx /= magnitude;
-      movementDirection.dy /= magnitude;
-      
-      // Скорость движения (пиксели за кадр) - движение отключено
-      const movementSpeed = 0;
-      
-      // Накопители для субпиксельного позиционирования
-      let subPixelAccumulator = {
-        back: { x: 0, y: 0 },
-        mid: { x: 0, y: 0 },
-        front: { x: 0, y: 0 }
-      };
-      
-      const canvases = { back: canvBack, mid: canvMid, front: canvFront };
+      const layers = { back, mid, front };
       const isDark = document.documentElement.classList.contains('dark');
       
-      function drawEmoji(layer, emoji) {
-        const canvas = canvases[layer];
-        const ctx = canvas.getContext('2d');
-        const dpr = window.devicePixelRatio || 1;
-        ctx.clearRect(0, 0, vw, vh);
+      // Function to create text-based emoji elements
+      function createEmojiElement(layer, emoji) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'symbolWrapper';
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = '50%';
+        wrapper.style.top = '50%';
+        wrapper.style.transform = 'translate(-50%, -50%)'; // Perfect centering
+        wrapper.style.fontSize = `${emojiSizes[layer]}px`;
+        // Prioritize vector emoji fonts
+        wrapper.style.fontFamily = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", "EmojiOne Color", "Twemoji", "Noto Emoji", sans-serif';
+        wrapper.style.pointerEvents = 'none';
+        wrapper.style.userSelect = 'none';
+        wrapper.style.willChange = 'auto'; // Disable will-change to prevent blurry rendering
+        wrapper.style.textAlign = 'center';
+        wrapper.style.lineHeight = '1';
+        wrapper.style.imageRendering = '-webkit-optimize-contrast';
+        wrapper.style.imageRendering = 'crisp-edges';
+        wrapper.style.webkitFontSmoothing = 'antialiased';
+        wrapper.style.mozOsxFontSmoothing = 'grayscale';
+        wrapper.style.textRendering = 'optimizeLegibility'; // Prioritize legibility for vector rendering
+        wrapper.style.transformStyle = 'preserve-3d';
+        wrapper.style.backfaceVisibility = 'hidden';
+        wrapper.style.zIndex = '100'; // Ensure emojis are rendered above other elements
+        wrapper.style.maxWidth = '100vw'; // Ensure emojis don't exceed viewport width
+        wrapper.style.maxHeight = '100vh'; // Ensure emojis don't exceed viewport height
+        // Vector rendering optimizations
+        wrapper.style.fontVariant = 'normal';
+        wrapper.style.fontFeatureSettings = '"liga" 1, "dlig" 1, "hlig" 1';
+        wrapper.style.webkitTextSizeAdjust = '100%';
+        wrapper.style.mozTextSizeAdjust = '100%';
+        wrapper.style.msTextSizeAdjust = '100%';
+        wrapper.style.textSizeAdjust = '100%';
         
-        ctx.imageSmoothingEnabled = false;
-        if (ctx.textRenderingOptimization) {
-          ctx.textRenderingOptimization = 'optimizeSpeed';
+        // Mobile-specific optimizations
+        if (window.devicePixelRatio > 1) {
+          wrapper.style.webkitFontSmoothing = 'antialiased';
+          wrapper.style.mozOsxFontSmoothing = 'grayscale';
+          wrapper.style.textRendering = 'optimizeLegibility';
+          wrapper.style.fontFeatureSettings = '"liga" 1, "dlig" 1, "hlig" 1';
         }
-        if (ctx.imageSmoothingQuality) {
-          ctx.imageSmoothingQuality = 'high';
+        // Use integer positioning for sharper rendering on mobile
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          wrapper.style.left = '50%';
+          wrapper.style.top = '50%';
+          wrapper.style.transform = 'translate(-50%, -50%) translateZ(0)'; // Force hardware acceleration
         }
         
-        const baseFontSize = emojiSizes[layer];
-        const fontSize = dpr >= 2 ? baseFontSize * 1.5 : baseFontSize;
-        
-        ctx.font = `${fontSize}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Android Emoji", EmojiSymbols, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Используем позиции для рисования
-        const x = Math.round(emojiPositions[layer].x);
-        const y = Math.round(emojiPositions[layer].y);
-        ctx.fillText(emoji, x, y);
+        // Если есть SVG-версия эмодзи, используем её
+        if (typeof emojiSVGs !== 'undefined' && emojiSVGs[emoji]) {
+          wrapper.innerHTML = emojiSVGs[emoji];
+          const svg = wrapper.querySelector('svg');
+          if (svg) {
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+          }
+        } else {
+          wrapper.textContent = emoji;
+        }
+        return wrapper;
       }
       
+      // Function to draw/update emojis as text elements
+      function drawEmoji(layer, emoji) {
+        // Clear existing emoji for this layer
+        const layerElement = layers[layer];
+        if (layerElement) {
+          // Remove existing emoji elements for this layer
+          const existingEmojis = layerElement.querySelectorAll('.symbolWrapper');
+          existingEmojis.forEach(el => el.remove());
+          
+          // Create and add new emoji element
+          const emojiElement = createEmojiElement(layer, emoji);
+          layerElement.appendChild(emojiElement);
+        }
+      }
+      
+      // Draw initial emojis
       Object.keys(allEmojis).forEach(layer => {
         drawEmoji(layer, allEmojis[layer]);
       });
       
-      // Функция для плавного изменения эмодзи с эффектом fadeout/fadein
-      function changeEmojiWithFade(layer, newEmoji) {
-        const canvas = canvases[layer];
-        const ctx = canvas.getContext('2d');
+      // Функция для плавного изменения одного случайного эмодзи в случайном слое
+      function changeRandomEmojiWithFade() {
+        // Выбираем случайный слой
+        const layerNames = ['back', 'mid', 'front'];
+        const randomLayer = layerNames[Math.floor(Math.random() * layerNames.length)];
         
-        // Плавное исчезновение старого эмодзи (2.5 секунды)
-        let opacity = 1.0;
-        const fadeOutDuration = 2500; // 2.5 секунды
-        const fadeInDuration = 2500;  // 2.5 секунды
-        const fadeOutStep = 1.0 / (fadeOutDuration / 16); // 16ms per frame ~60fps
-        const fadeInStep = 1.0 / (fadeInDuration / 16);   // 16ms per frame ~60fps
+        // Генерируем новый случайный эмодзи
+        const newEmoji = getRandomEmoji();
         
-        function fadeOut() {
-          if (opacity > 0) {
-            ctx.clearRect(0, 0, vw, vh);
-            ctx.globalAlpha = opacity;
-            drawEmoji(layer, allEmojis[layer]); // Рисуем старый эмодзи с уменьшенной прозрачностью
-            opacity -= fadeOutStep;
-            requestAnimationFrame(fadeOut);
-          } else {
-            // После полного исчезновения меняем эмодзи
-            allEmojis[layer] = newEmoji;
-            fadeIn();
-          }
-        }
+        const layerElement = layers[randomLayer];
+        if (!layerElement) return;
         
-        function fadeIn() {
-          if (opacity < 1.0) {
-            ctx.clearRect(0, 0, vw, vh);
-            ctx.globalAlpha = opacity;
-            drawEmoji(layer, allEmojis[layer]); // Рисуем новый эмодзи с увеличенной прозрачностью
-            opacity += fadeInStep;
-            requestAnimationFrame(fadeIn);
-          } else {
-            // Восстанавливаем полную непрозрачность
-            ctx.globalAlpha = 1.0;
-            drawEmoji(layer, allEmojis[layer]);
-          }
-        }
+        // Get existing emoji element
+        const existingEmojiElement = layerElement.querySelector('.symbolWrapper');
         
-        fadeOut();
-      }
-      
-      // Функция для обновления позиций эмодзи с учетом границ экрана
-      function updateEmojiPositions() {
-        // Плавно изменяем направление движения
-        if (Math.random() < 0.02) { // 2% шанс на каждом кадре
-          movementDirection.dx += (Math.random() - 0.5) * 0.1;
-          movementDirection.dy += (Math.random() - 0.5) * 0.1;
+        if (existingEmojiElement) {
+          // Fade out existing emoji
+          existingEmojiElement.style.transition = 'opacity 1.5s ease';
+          existingEmojiElement.style.opacity = '0';
           
-          // Нормализуем вектор направления
-          const magnitude = Math.sqrt(movementDirection.dx * movementDirection.dx + movementDirection.dy * movementDirection.dy);
-          if (magnitude > 0) {
-            movementDirection.dx /= magnitude;
-            movementDirection.dy /= magnitude;
-          }
-        }
-        
-        // Размеры эмодзи для проверки границ (берем самый большой размер)
-        const maxEmojiSize = emojiSizes.front * (window.devicePixelRatio >= 2 ? 1.5 : 1);
-        const buffer = maxEmojiSize / 2 + 30; // Буфер от краев экрана
-        
-        // Обновляем позиции для всех слоев с субпиксельной точностью
-        Object.keys(emojiPositions).forEach(layer => {
-          // Добавляем движение к накопителю
-          subPixelAccumulator[layer].x += movementDirection.dx * movementSpeed;
-          subPixelAccumulator[layer].y += movementDirection.dy * movementSpeed;
-          
-          // Извлекаем целую часть для обновления позиции
-          const deltaX = Math.floor(subPixelAccumulator[layer].x);
-          const deltaY = Math.floor(subPixelAccumulator[layer].y);
-          
-          if (deltaX !== 0 || deltaY !== 0) {
-            emojiPositions[layer].x += deltaX;
-            emojiPositions[layer].y += deltaY;
+          // After fade out, replace with new emoji
+          setTimeout(() => {
+            allEmojis[randomLayer] = newEmoji;
+            drawEmoji(randomLayer, allEmojis[randomLayer]);
             
-            // Обновляем накопитель
-            subPixelAccumulator[layer].x -= deltaX;
-            subPixelAccumulator[layer].y -= deltaY;
-          }
+            // Fade in new emoji
+            const newEmojiElement = layerElement.querySelector('.symbolWrapper');
+            if (newEmojiElement) {
+              // Устанавливаем начальное состояние для плавного появления
+              newEmojiElement.style.opacity = '0';
+              newEmojiElement.style.transition = 'opacity 1.5s ease';
+              
+              // Принудительно перерисовываем элемент перед началом анимации
+              newEmojiElement.offsetHeight; 
+              
+              // Плавно показываем новый эмодзи
+              newEmojiElement.style.opacity = '1';
+            }
+          }, 1500);
+        } else {
+          // If no existing element, just draw the new one with fade-in effect
+          allEmojis[randomLayer] = newEmoji;
+          drawEmoji(randomLayer, allEmojis[randomLayer]);
           
-          // Проверяем границы и меняем направление при необходимости
-          if (emojiPositions[layer].x < buffer || emojiPositions[layer].x > vw - buffer) {
-            movementDirection.dx *= -1;
-            emojiPositions[layer].x = Math.max(buffer, Math.min(vw - buffer, emojiPositions[layer].x));
-            subPixelAccumulator[layer].x = 0; // Сброс накопителя при изменении направления
+          // Apply fade-in effect to new emoji
+          const newEmojiElement = layerElement.querySelector('.symbolWrapper');
+          if (newEmojiElement) {
+            // Устанавливаем начальное состояние для плавного появления
+            newEmojiElement.style.opacity = '0';
+            newEmojiElement.style.transition = 'opacity 1.5s ease';
+            
+            // Принудительно перерисовываем элемент перед началом анимации
+            newEmojiElement.offsetHeight;
+            
+            // Плавно показываем новый эмодзи
+            newEmojiElement.style.opacity = '1';
           }
-          
-          if (emojiPositions[layer].y < buffer || emojiPositions[layer].y > vh - buffer) {
-            movementDirection.dy *= -1;
-            emojiPositions[layer].y = Math.max(buffer, Math.min(vh - buffer, emojiPositions[layer].y));
-            subPixelAccumulator[layer].y = 0; // Сброс накопителя при изменении направления
-          }
-        });
-        
-        // Перерисовываем все эмодзи на новых позициях
-        Object.keys(allEmojis).forEach(layer => {
-          drawEmoji(layer, allEmojis[layer]);
-        });
-        
-        // Продолжаем анимацию
-        if (phase === 'symbol' && lastSelectedMode === 'emoji') {
-          requestAnimationFrame(updateEmojiPositions);
         }
       }
-      
-      // Запускаем анимацию движения
-      requestAnimationFrame(updateEmojiPositions);
       
       // Счетчик фокусов на переднем слое
       let frontFocusCount = 0;
@@ -2667,12 +3015,10 @@ phaseTimer = setTimeout(() => { if (shutters) shutters.classList.remove('active'
         if (target === 'front') {
           frontFocusCount++;
           
-          // Если это третий (или более) фокус на переднем слое, меняем эмодзи
+          // Если это третий (или более) фокус на переднем слое, меняем один случайный эмодзи
           if (frontFocusCount >= 3) {
-            // Используем плавный переход при изменении эмодзи
-            changeEmojiWithFade('back', getRandomEmoji());
-            changeEmojiWithFade('mid', getRandomEmoji());
-            changeEmojiWithFade('front', getRandomEmoji());
+            // Используем плавный переход при изменении одного случайного эмодзи
+            changeRandomEmojiWithFade();
             
             // Сбрасываем счетчик
             frontFocusCount = 0;
