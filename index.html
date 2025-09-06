@@ -786,36 +786,18 @@
 
   <script>
   (function() {
-    // *** TELEGRAM MINI APP EXPANSION ***
-    // Expand to full height when running in Telegram
-    function expandTelegramMiniApp() {
+
+	  window.onload = function () {
       if (window.Telegram && Telegram.WebApp) {
-        try {
-          // Expand the Telegram Mini App to full height
-          Telegram.WebApp.expand(); // Открывает на весь экран
-          Telegram.WebApp.ready();
-          
-          // Request fullscreen mode if supported
+        Telegram.WebApp.expand(); // Открывает на весь экран
+        Telegram.WebApp.ready();  // Сообщает Telegram, что приложение готово
+
+		   // Request fullscreen mode if supported
           if (Telegram.WebApp.isVersionAtLeast('6.4')) {
             Telegram.WebApp.requestFullscreen();
           }
-          
-          // Also set the viewport height to 100vh for better compatibility
-          document.documentElement.style.height = '100vh';
-          document.body.style.height = '100vh';
-          document.getElementById('app').style.height = '100vh';
-        } catch (e) {
-          console.warn('Failed to expand Telegram Mini App:', e);
-        }
       }
-    }
-    
-    // Call the expansion function when the page loads
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', expandTelegramMiniApp);
-    } else {
-      expandTelegramMiniApp();
-    }
+    };
     // *** END TELEGRAM MINI APP EXPANSION ***
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
