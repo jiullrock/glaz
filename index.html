@@ -786,17 +786,12 @@
 
   <script>
 
-	  	  window.onload = function () {
-      if (window.Telegram && Telegram.WebApp) {
-        Telegram.WebApp.expand(); // Открывает на весь экран
-        Telegram.WebApp.ready();  // Сообщает Telegram, что приложение готово
-
-		   // Request fullscreen mode if supported
-          if (Telegram.WebApp.isVersionAtLeast('6.4')) {
-            Telegram.WebApp.requestFullscreen();
-          }
-      }
-    };
+  window.onload = function () {
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.ready();   // Сообщаем, что миниапп готов
+      Telegram.WebApp.expand();  // Разворачиваем на полный экран
+    }
+  };
   (function() {
 
 
