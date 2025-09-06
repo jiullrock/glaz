@@ -789,10 +789,11 @@
     // *** TELEGRAM MINI APP EXPANSION ***
     // Expand to full height when running in Telegram
     function expandTelegramMiniApp() {
-      if (window.Telegram && window.Telegram.WebApp) {
+      if (window.Telegram && Telegram.WebApp) {
         try {
           // Expand the Telegram Mini App to full height
-          window.Telegram.WebApp.expand();
+          Telegram.WebApp.expand(); // Открывает на весь экран
+          Telegram.WebApp.ready();
           
           // Request fullscreen mode if supported
           if (window.Telegram.WebApp.isVersionAtLeast('6.4')) {
