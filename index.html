@@ -786,6 +786,31 @@
 
   <script>
   (function() {
+    // *** TELEGRAM MINI APP EXPANSION ***
+    // Expand to full height when running in Telegram
+    function expandTelegramMiniApp() {
+      if (window.Telegram && window.Telegram.WebApp) {
+        try {
+          // Expand the Telegram Mini App to full height
+          window.Telegram.WebApp.expand();
+          
+          // Also set the viewport height to 100vh for better compatibility
+          document.documentElement.style.height = '100vh';
+          document.body.style.height = '100vh';
+          document.getElementById('app').style.height = '100vh';
+        } catch (e) {
+          console.warn('Failed to expand Telegram Mini App:', e);
+        }
+      }
+    }
+    
+    // Call the expansion function when the page loads
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', expandTelegramMiniApp);
+    } else {
+      expandTelegramMiniApp();
+    }
+    // *** END TELEGRAM MINI APP EXPANSION ***
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
     const APP_VERSION = 'v1.4.0';
