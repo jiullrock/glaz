@@ -785,16 +785,34 @@
   </div>
 
   <script>
-
-  window.onload = function () {
-    if (window.Telegram && Telegram.WebApp) {
-      Telegram.WebApp.ready();   // Сообщаем, что миниапп готов
-      Telegram.WebApp.expand();  // Разворачиваем на полный экран
-    }
-  };
   (function() {
+    // *** TELEGRAM MINI APP EXPANSION ***
+    // Expand to full height when running in Telegram
+	function expandTelegramMiniApp() {
+		if (window.Telegram && window.Telegram.WebApp) {
+		  try {
+			// Сообщаем, что миниапп готов
+			window.Telegram.WebApp.ready();
 
+			// Разворачиваем миниапп на полный экран
+			window.Telegram.WebApp.expand();
 
+			// Дополнительно фиксируем высоту для верстки
+			document.documentElement.style.height = '100vh';
+			document.body.style.height = '100vh';
+			const app = document.getElementById('app');
+			if (app) app.style.height = '100vh';
+		  } catch (e) {
+			console.warn('Failed to expand Telegram Mini App:', e);
+		  }
+		}
+	  }
+
+	  if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', expandTelegramMiniApp);
+	  } else {
+		expandTelegramMiniApp();
+	  }
     // *** END TELEGRAM MINI APP EXPANSION ***
     // *** КОНФИГУРАЦИЯ ВЕРСИИ ***
     // Легко изменяемый номер версии, отображаемый на стартовом экране
