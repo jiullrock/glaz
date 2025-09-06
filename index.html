@@ -796,8 +796,8 @@
           Telegram.WebApp.ready();
           
           // Request fullscreen mode if supported
-          if (window.Telegram.WebApp.isVersionAtLeast('6.4')) {
-            window.Telegram.WebApp.requestFullscreen();
+          if (Telegram.WebApp.isVersionAtLeast('6.4')) {
+            Telegram.WebApp.requestFullscreen();
           }
           
           // Also set the viewport height to 100vh for better compatibility
